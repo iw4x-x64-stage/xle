@@ -101,7 +101,7 @@ namespace odb
 
       bool is_null (false);
 
-      // From model.hxx:49:12
+      // From model.hxx:50:12
       ::uint64_t const& vt =
         std::to_underlying (v);
 
@@ -120,7 +120,7 @@ namespace odb
 
       bool is_null (false);
 
-      // From model.hxx:49:12
+      // From model.hxx:50:12
       ::uint64_t const& vt =
         std::to_underlying (v);
 
@@ -158,7 +158,7 @@ namespace odb
         i.owner_value,
         i.owner_null);
 
-      // From model.hxx:49:12
+      // From model.hxx:50:12
       v = xle::xuid 
       {
          (vt) 
@@ -180,7 +180,7 @@ namespace odb
         i.target_value,
         i.target_null);
 
-      // From model.hxx:49:12
+      // From model.hxx:50:12
       v = xle::xuid 
       {
          (vt) 
@@ -380,15 +380,19 @@ namespace odb
     // added
     //
     {
-      ::int64_t const& v =
+      ::xle::timestamp const& v =
         o.added;
 
       bool is_null (false);
 
+      // From model.hxx:58:12
+      ::int64_t const& vt =
+        std::chrono::duration_cast < std::chrono::nanoseconds > ((v).time_since_epoch ()).count ();
+
       pgsql::value_traits<
           ::int64_t,
           pgsql::id_bigint >::set_image (
-        i.added_value, is_null, v);
+        i.added_value, is_null, vt);
       i.added_null = is_null;
     }
 
@@ -433,15 +437,20 @@ namespace odb
     // added
     //
     {
-      ::int64_t& v =
+      ::xle::timestamp& v =
         o.added;
+
+      ::int64_t vt;
 
       pgsql::value_traits<
           ::int64_t,
           pgsql::id_bigint >::set_value (
-        v,
+        vt,
         i.added_value,
         i.added_null);
+
+      // From model.hxx:58:12
+      v = xle::timestamp (std::chrono::duration_cast < xle::duration > (std::chrono::nanoseconds (vt)));
     }
   }
 
@@ -967,7 +976,7 @@ namespace odb
         i.target_value,
         i.target_null);
 
-      // From model.hxx:49:12
+      // From model.hxx:50:12
       v = xle::xuid 
       {
          (vt) 
@@ -991,15 +1000,20 @@ namespace odb
     // added
     //
     {
-      ::int64_t& v =
+      ::xle::timestamp& v =
         o.added;
+
+      ::int64_t vt;
 
       pgsql::value_traits<
           ::int64_t,
           pgsql::id_bigint >::set_value (
-        v,
+        vt,
         i.added_value,
         i.added_null);
+
+      // From model.hxx:58:12
+      v = xle::timestamp (std::chrono::duration_cast < xle::duration > (std::chrono::nanoseconds (vt)));
     }
 
     // following
@@ -1031,11 +1045,11 @@ namespace odb
     r += "FROM \"relationship\" AS \"forward\"";
 
     r += " LEFT JOIN \"relationship\" AS \"reverse\" ON";
-    // From model.hxx:95:5
+    // From model.hxx:104:5
     r += query_columns::forward::id.target == query_columns::reverse::id.owner && query_columns::forward::id.owner == query_columns::reverse::id.target;
 
     query_base_type c (
-      // From model.hxx:98:5
+      // From model.hxx:107:5
       (q.empty () ? query_base_type::true_expr : q) + "ORDER BY" + query_columns::forward::added + "," + query_columns::forward::id.target);
 
     c.optimize ();

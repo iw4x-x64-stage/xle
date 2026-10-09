@@ -256,28 +256,12 @@ namespace xle
     throw database_error ("database error: {}", describe (e));
   }
 
-  // Return the timestamp as nanoseconds since the epoch and back.
-  //
-  static int64_t
-  to_nanoseconds (timestamp t)
-  {
-    return chrono::duration_cast<chrono::nanoseconds> (
-      t.time_since_epoch ()).count ();
-  }
-
-  static timestamp
-  to_timestamp (int64_t ns)
-  {
-    return timestamp (
-      chrono::duration_cast<duration> (chrono::nanoseconds (ns)));
-  }
-
   // Return the followed user of the relationship entry.
   //
   static person
   to_person (const relationship_entry& e)
   {
-    return person {e.target, e.favorite, e.following, to_timestamp (e.added)};
+    return person {e.target, e.favorite, e.following, e.added};
   }
 
   // pgsql_social_store
@@ -372,7 +356,7 @@ namespace xle
       if (c.result >= limit)
         return follow_result::full;
 
-      db.persist (relationship_record {k, false, to_nanoseconds (now)});
+      db.persist (relationship_record {k, false, now});
       return follow_result::added;
     });
   }

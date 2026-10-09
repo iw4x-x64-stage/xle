@@ -204,7 +204,7 @@ namespace odb
                 pgsql::val_bind< ::xle::xuid > v,
                 const char* conv)
         {
-          // From model.hxx:49:12
+          // From model.hxx:50:12
           ::uint64_t const& vt =
             std::to_underlying (v.val);
 
@@ -222,10 +222,10 @@ namespace odb
                 const char* conv)
           -> typename std::enable_if<
                std::is_reference< decltype (
-                   // From model.hxx:49:12
+                   // From model.hxx:50:12
                    std::to_underlying (r.ref)) >::value>::type
         {
-          // From model.hxx:49:12
+          // From model.hxx:50:12
           ::uint64_t const& rt =
             std::to_underlying (r.ref);
 
@@ -248,7 +248,7 @@ namespace odb
                 const char* conv)
           -> typename std::enable_if<
                !std::is_reference< decltype (
-                   // From model.hxx:49:12
+                   // From model.hxx:50:12
                    std::to_underlying (r.ref)) >::value>::type
           = delete;
 
@@ -276,7 +276,7 @@ namespace odb
                 pgsql::val_bind< ::xle::xuid > v,
                 const char* conv)
         {
-          // From model.hxx:49:12
+          // From model.hxx:50:12
           ::uint64_t const& vt =
             std::to_underlying (v.val);
 
@@ -294,10 +294,10 @@ namespace odb
                 const char* conv)
           -> typename std::enable_if<
                std::is_reference< decltype (
-                   // From model.hxx:49:12
+                   // From model.hxx:50:12
                    std::to_underlying (r.ref)) >::value>::type
         {
-          // From model.hxx:49:12
+          // From model.hxx:50:12
           ::uint64_t const& rt =
             std::to_underlying (r.ref);
 
@@ -320,7 +320,7 @@ namespace odb
                 const char* conv)
           -> typename std::enable_if<
                !std::is_reference< decltype (
-                   // From model.hxx:49:12
+                   // From model.hxx:50:12
                    std::to_underlying (r.ref)) >::value>::type
           = delete;
 
@@ -354,12 +354,72 @@ namespace odb
 
     // added
     //
+    struct added_base_type_: pgsql::query_column_base
+    {
+      using query_column_base::query_column_base;
+
+      static void
+      append (pgsql::query_base& q,
+              pgsql::val_bind< ::xle::timestamp > v,
+              const char* conv)
+      {
+        // From model.hxx:58:12
+        ::int64_t const& vt =
+          std::chrono::duration_cast < std::chrono::nanoseconds > ((v.val).time_since_epoch ()).count ();
+
+        q.append<
+          ::int64_t,
+          pgsql::id_bigint > (
+            pgsql::val_bind< ::int64_t > (vt),
+            conv);
+      }
+
+      template <typename T>
+      static auto
+      append (pgsql::query_base& q,
+              pgsql::ref_bind<T> r,
+              const char* conv)
+        -> typename std::enable_if<
+             std::is_reference< decltype (
+                 // From model.hxx:58:12
+                 std::chrono::duration_cast < std::chrono::nanoseconds > ((r.ref).time_since_epoch ()).count ()) >::value>::type
+      {
+        // From model.hxx:58:12
+        ::int64_t const& rt =
+          std::chrono::duration_cast < std::chrono::nanoseconds > ((r.ref).time_since_epoch ()).count ();
+
+        q.append<
+          ::int64_t,
+          pgsql::id_bigint > (
+            pgsql::ref_bind< ::int64_t > (rt),
+            conv);
+      }
+
+      // If a compiler error points to the line below, then it most likely
+      // means that the 'to' clause expression of the respective map pragma is
+      // not of a reference type and thus binding by reference is not
+      // supported for this query member.
+      //
+      template <typename T>
+      static auto
+      append (pgsql::query_base& q,
+              pgsql::ref_bind<T> r,
+              const char* conv)
+        -> typename std::enable_if<
+             !std::is_reference< decltype (
+                 // From model.hxx:58:12
+                 std::chrono::duration_cast < std::chrono::nanoseconds > ((r.ref).time_since_epoch ()).count ()) >::value>::type
+        = delete;
+
+      static void*
+      param_factory () = delete;
+    };
+
     typedef
     pgsql::query_column<
-      pgsql::value_traits<
-        ::int64_t,
-        pgsql::id_bigint >::query_type,
-      pgsql::id_bigint >
+      ::xle::timestamp,
+      pgsql::id_bigint,
+      added_base_type_ >
     added_type_;
 
     static const added_type_ added;

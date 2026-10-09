@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <chrono>
 #include <compare> // strong_ordering
 #include <utility> // to_underlying()
 
@@ -51,6 +52,17 @@
                to(std::to_underlying (?))    \
                from(xle::xuid {(?)})
 
+// The timestamps are stored as nanoseconds since the epoch, which fits until
+// the year 2262.
+//
+#pragma db map type(xle::timestamp)                                     \
+  as(std::int64_t)                                                      \
+  to(std::chrono::duration_cast<std::chrono::nanoseconds> (             \
+       (?).time_since_epoch ()).count ())                               \
+  from(xle::timestamp (                                                 \
+    std::chrono::duration_cast<xle::duration> (                         \
+      std::chrono::nanoseconds (?))))
+
 namespace xle
 {
   // The owner follows the target (see social_store).
@@ -78,11 +90,8 @@ namespace xle
     #pragma db id column("")
     relationship_key id;
 
-    bool favorite;
-
-    // Nanoseconds since the epoch (which fits until the year 2262).
-    //
-    int64_t added;
+    bool      favorite;
+    timestamp added;
 
     #pragma db index("relationship_target_i") members(id.target)
   };
@@ -106,7 +115,7 @@ namespace xle
     bool favorite;
 
     #pragma db column(forward::added)
-    int64_t added;
+    timestamp added;
 
     #pragma db column("(" + reverse::id.owner + " IS NOT NULL)")
     bool following;
