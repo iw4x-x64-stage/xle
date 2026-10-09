@@ -161,9 +161,12 @@ $ sudo useradd --system --user-group --create-home \
 \li|\n\b{4. Create TLS Certificate}\n
 
 The server needs a TLS certificate and its private key in the PEM format.
-IW4x client determines which certificates it accepts, so consult its
-documentation for the production certificate. For a test deployment we can
-generate a self-signed one:
+The certificate names the host that IW4x client connects to and is issued
+by a certificate authority that the players' systems trust. For a public
+deployment we get it from Let's Encrypt, as described in
+\l{#install-certificate Getting Certificate from Let's Encrypt}, which
+installs it in the same locations. For a test deployment we can generate a
+self-signed one:
 
 \
 $ sudo mkdir -p /etc/xle/tls
@@ -180,8 +183,8 @@ $ sudo chown root:xle /etc/xle/tls/key.pem
 $ sudo chmod 640 /etc/xle/tls/key.pem
 \
 
-\N|If \c{obe} runs on the same host, then both can use the same certificate,
-since the clients reach both at the same address.|
+\N|If \c{obe} runs on the same host, then each server has a certificate for
+its own name, since the clients reach them by different names.|
 
 |
 
@@ -302,6 +305,182 @@ With \c{ufw}, common on Ubuntu:
 
 \
 $ sudo ufw allow 443/tcp
+\
+
+||
+
+\h#install-certificate|Getting Certificate from Let's Encrypt|
+
+Let's Encrypt issues free certificates for the DNS names whose control we
+prove, and every player's system trusts them out of the box. IW4x serves
+\c{xle} at \c{xle.iw4x.io}, a name in the \c{iw4x.io} zone, whose DNS is
+hosted by Cloudflare. A deployment under another domain follows the same steps
+with its own name and DNS provider.
+
+We use \c{certbot}, the Let's Encrypt client, which proves control with the
+HTTP challenge: Let's Encrypt fetches a token from port 80 of the host, and
+\c{certbot} serves it there for the duration of the request. The
+certificates are valid for 90 days and \c{certbot} renews them about a month
+before they expire.
+
+If \c{obe} runs on the same host and is set up as described in its manual,
+then \c{certbot} is already installed and port 80 is open, and we skip steps
+2 and 3.
+
+\dl|
+
+\li|\b{1. Add DNS Records}\n
+
+In the Cloudflare dashboard we open the \c{iw4x.io} zone and add the
+following records under DNS, Records:
+
+\
+Type  Name  Content                  Proxy status
+A     xle   <host IPv4 address>      DNS only
+AAAA  xle   <host IPv6 address>      DNS only
+\
+
+We add the \c{AAAA} record if the host has an IPv6 address. The records are
+DNS only, so the players connect to the host directly and the TLS connection
+ends at \c{xle}, which keeps the platform tokens between the players and
+\c{xle}. The HTTP challenge of the next steps also reaches the host directly.
+
+Once the records propagate, the name resolves to the host:
+
+\
+$ dig +short xle.iw4x.io
+203.0.113.7
+\
+
+|
+
+\li|\n\b{2. Install certbot}\n
+
+On Fedora the package comes with a timer that runs the renewal twice a day,
+which we enable:
+
+\
+$ sudo dnf install certbot
+$ sudo systemctl enable --now certbot-renew.timer
+\
+
+On Debian and Ubuntu the package enables its \c{certbot.timer} on
+installation:
+
+\
+$ sudo apt install certbot
+\
+
+|
+
+\li|\n\b{3. Open Port 80}\n
+
+The HTTP challenge reaches the host on port 80, both now and on every
+renewal. With \c{firewalld}:
+
+\
+$ sudo firewall-cmd --permanent --add-port=80/tcp
+$ sudo firewall-cmd --reload
+\
+
+With \c{ufw}:
+
+\
+$ sudo ufw allow 80/tcp
+\
+
+\N|If a web server already listens on port 80, then \c{certbot} can place
+the token into that server's document root (see \c{--webroot} in the
+\c{certbot} documentation).|
+
+\N|If the host cannot open port 80, then \c{certbot} can prove control with
+the DNS challenge, creating a \c{TXT} record through the Cloudflare API
+(see the \c{certbot-dns-cloudflare} plugin). This needs a Cloudflare API
+token with the permission to edit the DNS of the \c{iw4x.io} zone, which is
+then a secret on the host that controls every name in the zone.|
+
+|
+
+\li|\n\b{4. Request Certificate}\n
+
+Now we request the certificate, giving the email address of whoever
+operates the host, where Let's Encrypt sends the expiry warnings:
+
+\
+$ sudo certbot certonly --standalone -d xle.iw4x.io \
+  -m <address> --agree-tos --no-eff-email
+...
+Successfully received certificate.
+...
+\
+
+\c{certbot} keeps the certificate in
+\c{/etc/letsencrypt/live/xle.iw4x.io/}: \c{fullchain.pem} is the
+certificate followed by the intermediate certificate that the clients need
+to verify it, and \c{privkey.pem} is the private key. The directory is
+readable by \c{root} only.
+
+|
+
+\li|\n\b{5. Install Deploy Hook}\n
+
+\c{xle} runs as the \c{xle} user and reads the certificate on startup. So
+after each renewal we copy the certificate into \c{/etc/xle/tls/} and
+restart \c{xle}. \c{certbot} runs the scripts in
+\c{/etc/letsencrypt/renewal-hooks/deploy/} after each renewal, with the
+directory of the renewed certificate in \c{RENEWED_LINEAGE}. We save the
+following script as \c{/etc/letsencrypt/renewal-hooks/deploy/xle}:
+
+\
+#!/bin/sh
+
+# Install the renewed IW4x certificate for xle and restart it.
+#
+set -e
+
+case \"$RENEWED_LINEAGE\" in
+  */xle.iw4x.io) ;;
+  *) exit 0 ;;
+esac
+
+install -m 644 -o root -g xle \
+  \"$RENEWED_LINEAGE/fullchain.pem\" /etc/xle/tls/cert.pem
+install -m 640 -o root -g xle \
+  \"$RENEWED_LINEAGE/privkey.pem\" /etc/xle/tls/key.pem
+
+systemctl try-restart xle
+\
+
+Then we make it executable and run it once for the certificate we just
+received:
+
+\
+$ sudo chmod 755 /etc/letsencrypt/renewal-hooks/deploy/xle
+$ sudo env RENEWED_LINEAGE=/etc/letsencrypt/live/xle.iw4x.io \
+  /etc/letsencrypt/renewal-hooks/deploy/xle
+\
+
+The \c{try-restart} command restarts \c{xle} if it is running, so the hook
+also works before the service is installed.
+
+\N|A restart closes the connections in progress, and since \c{xle} keeps
+its state in the database, the next requests find the same state. The
+renewal timer runs at a random time of the day, and if you prefer a quiet
+hour, then you can set its schedule with \c{systemctl edit} (see
+\c{OnCalendar} in \c{systemd.timer(5)}).|
+
+|
+
+\li|\n\b{6. Test Renewal}\n
+
+Finally, we check that the renewal works, which \c{certbot} does against the
+Let's Encrypt staging environment without replacing the certificate:
+
+\
+$ sudo certbot renew --dry-run
+...
+Congratulations, all simulated renewals succeeded:
+  /etc/letsencrypt/live/xle.iw4x.io/fullchain.pem (success)
 \
 
 ||
