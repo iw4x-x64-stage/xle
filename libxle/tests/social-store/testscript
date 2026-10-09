@@ -7,3 +7,13 @@
 {{
   .include store.testscript
 }}
+
+: pgsql
+: Test the store in the PostgreSQL database (see config.libxle.test.pgsql)
+:
+if ($pgsql != [null])
+{{
+  test.options += --pgsql $pgsql
+
+  .include store.testscript
+}}

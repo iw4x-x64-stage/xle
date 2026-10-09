@@ -4,7 +4,14 @@
 import libs  = libxle%lib{xle}
 import libs += libboost-asio%lib{boost_asio}
 
+# The driver creates and drops the test databases (see driver.cxx).
+#
+import libs += libodb-pgsql%lib{odb-pgsql}
+import libs += libodb%lib{odb}
+
 # Note that store.testscript is included by testscript (rather than being a
 # test of its own).
 #
 exe{driver}: {hxx ixx txx cxx}{**} $libs testscript file{store.testscript}
+
+testscript{*}: pgsql = $config.libxle.test.pgsql
