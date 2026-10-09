@@ -43,7 +43,7 @@ bdep test '!config.libxle.test.pgsql=postgres'
 
 ## Contributing
 
-See https://github.com/iw4x/.github/blob/main/CONTRIBUTING.md
+See [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md).
 
 ## License
 
