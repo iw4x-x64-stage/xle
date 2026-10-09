@@ -1,7 +1,7 @@
 // Copyright (c) the IW4x authors (see the AUTHORS file).
 // SPDX-License-Identifier: GPL-3.0-only WITH AdditionRef-IW4x-Exception-1.1
 
-#include <libxle/social-service.hxx>
+#include <libxle/service-social.hxx>
 
 #include <boost/json/array.hpp>
 #include <boost/json/object.hpp>

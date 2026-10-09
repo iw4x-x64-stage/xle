@@ -17,7 +17,7 @@
 
 #include <libxle/target.hxx>
 #include <libxle/social-store.hxx>
-#include <libxle/social-service.hxx>
+#include <libxle/service-social.hxx>
 
 #undef NDEBUG
 #include <cassert>

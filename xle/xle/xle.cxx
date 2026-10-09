@@ -21,7 +21,7 @@
 #include <libxle/pgsql.hxx>
 #include <libxle/social-store.hxx>
 #include <libxle/social-server.hxx>
-#include <libxle/social-service.hxx>
+#include <libxle/service-social.hxx>
 
 #include <xle/version.hxx>
 #include <xle/xle-options.hxx>
