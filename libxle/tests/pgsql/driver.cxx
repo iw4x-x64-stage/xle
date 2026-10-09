@@ -82,6 +82,12 @@ private:
 // version xle <count>
 // table <name> <count>
 //
+// Then raise the schema version by one and print the version the database
+// reports and the error migrating it fails with:
+//
+// schema version <version>
+// refused: <error>
+//
 int
 main (int argc, char* argv[])
 try
@@ -112,26 +118,60 @@ try
   // Note that execute() returns the number of rows a SELECT produces,
   // which is all we need to check the catalog.
   //
-  odb::pgsql::database db ("", "", tdb.name ());
-  odb::transaction t (db.begin ());
+  {
+    odb::pgsql::database db ("", "", tdb.name ());
+    odb::transaction t (db.begin ());
 
-  println ("tables {}",
-           db.execute ("SELECT 1 FROM pg_tables WHERE schemaname = 'public'"));
+    println ("tables {}",
+             db.execute ("SELECT 1 FROM pg_tables "
+                         "WHERE schemaname = 'public'"));
 
-  println ("versions {}", db.execute ("SELECT 1 FROM schema_version"));
+    println ("versions {}", db.execute ("SELECT 1 FROM schema_version"));
 
-  println ("version xle {}",
-           db.execute ("SELECT 1 FROM schema_version WHERE name = 'xle'"));
+    println ("version xle {}",
+             db.execute ("SELECT 1 FROM schema_version WHERE name = 'xle'"));
 
-  for (const char* n: {"relationship", "schema_version"})
-    println ("table {} {}",
-             n,
-             db.execute (format ("SELECT 1 FROM pg_tables "
-                                 "WHERE schemaname = 'public' AND "
-                                 "tablename = '{}'",
-                                 n)));
+    for (const char* n: {"relationship", "schema_version"})
+      println ("table {} {}",
+               n,
+               db.execute (format ("SELECT 1 FROM pg_tables "
+                                   "WHERE schemaname = 'public' AND "
+                                   "tablename = '{}'",
+                                   n)));
 
-  t.commit ();
+    t.commit ();
+  }
+
+  // Raise the schema version past the current one and make sure the
+  // database is then refused.
+  //
+  {
+    odb::pgsql::database db ("", "", tdb.name ());
+    odb::transaction t (db.begin ());
+    db.execute ("UPDATE schema_version SET version = version + 1 "
+                "WHERE name = 'xle'");
+    t.commit ();
+  }
+
+  {
+    pgsql_settings s;
+    s.name = tdb.name ();
+    s.max_connections = 1;
+
+    pgsql_database db (s);
+
+    println ("schema version {}", db.schema_version ());
+
+    try
+    {
+      db.migrate ();
+      assert (false);
+    }
+    catch (const database_error& e)
+    {
+      println ("refused: {}", e.what ());
+    }
+  }
 }
 catch (const std::exception& e)
 {

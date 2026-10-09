@@ -4,7 +4,8 @@
 # The tests of the PostgreSQL database (see config.libxle.test.pgsql).
 
 : migrate
-: Test that migrating creates only our schema and then finds it current
+: Test that migrating creates only our schema, then finds it current, and
+: refuses a newer one
 :
 : The ODB schema catalog is process-wide and also has the schemas of the
 : libraries we link (libobe), which must be neither created nor versioned
@@ -20,5 +21,7 @@ if ($pgsql != [null])
   version xle 1
   table relationship 1
   table schema_version 1
+  schema version 2
+  refused: database schema version 2 is newer than 1
   EOO
 }
