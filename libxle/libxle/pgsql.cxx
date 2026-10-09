@@ -4,7 +4,7 @@
 #include <libxle/pgsql.hxx>
 
 #include <thread>      // this_thread::sleep_for()
-#include <concepts>    // invocable, same_as
+#include <concepts>    // invocable
 #include <type_traits> // invoke_result_t, is_void_v
 
 #include <boost/asio/co_spawn.hpp>
@@ -281,33 +281,6 @@ namespace xle
                    to_timestamp (e.added)};
   }
 
-  // Return the query condition selecting the owner's relationships that
-  // match the view. Note that the entry and the count views join the same
-  // tables under the same aliases and so share it.
-  //
-  template <typename Q>
-    requires std::same_as<Q, odb::query<relationship_entry>> ||
-             std::same_as<Q, odb::query<relationship_count>>
-  static Q
-  people_query (xuid o, relationship_view v)
-  {
-    Q r (Q::forward::id.owner == to_underlying (o));
-
-    switch (v)
-    {
-      case relationship_view::all:
-        break;
-      case relationship_view::favorite:
-        r = r && Q::forward::favorite;
-        break;
-      case relationship_view::legacy_friends:
-        r = r && Q::reverse::id.owner.is_not_null ();
-        break;
-    }
-
-    return r;
-  }
-
   // pgsql_social_store
   //
   pgsql_social_store::
@@ -324,21 +297,36 @@ namespace xle
     {
       using query = odb::query<relationship_entry>;
 
-      query q (people_query<query> (o, v));
+      query q (query::forward::id.owner == to_underlying (o));
 
-      people_page r;
-      r.total = db.query_value<relationship_count> (
-        people_query<odb::query<relationship_count>> (o, v)).result;
-
-      if (start < r.total && count != 0)
+      switch (v)
       {
-        q += "ORDER BY" + query::forward::added + "," +
-             query::forward::id.target +
-             "LIMIT" + query::_val (static_cast<uint64_t> (count)) +
-             "OFFSET" + query::_val (static_cast<uint64_t> (start));
+        case relationship_view::all:
+          break;
+        case relationship_view::favorite:
+          q = q && query::forward::favorite;
+          break;
+        case relationship_view::legacy_friends:
+          q = q && query::reverse::id.owner.is_not_null ();
+          break;
+      }
 
-        for (const relationship_entry& e: db.query<relationship_entry> (q))
+      // Select the whole list (ordered by the view) and take the range
+      // while counting.
+      //
+      // Note that ODB has no notion of the result range (SQL LIMIT and
+      // OFFSET) and we would rather not spell it in SQL. Fetching the whole
+      // list costs little: it is bounded by the follow limit and PostgreSQL
+      // results are always fetched completely anyway (see the ODB manual,
+      // PostgreSQL Limitations).
+      //
+      people_page r;
+      for (const relationship_entry& e: db.query<relationship_entry> (q))
+      {
+        if (r.total >= start && r.people.size () < count)
           r.people.push_back (to_person (e));
+
+        ++r.total;
       }
 
       return r;
@@ -380,7 +368,7 @@ namespace xle
 
       const relationship_count c (
         db.query_value<relationship_count> (
-          count_query::forward::id.owner == to_underlying (o)));
+          count_query::id.owner == to_underlying (o)));
 
       if (c.result >= limit)
         return follow_result::full;

@@ -510,9 +510,6 @@ namespace odb
 
     typedef pgsql::view_statements<view_type> statements_type;
 
-    struct forward_tag;
-    struct reverse_tag;
-
     typedef pgsql::query_base query_base_type;
     struct query_columns;
 
@@ -597,47 +594,12 @@ namespace odb
 
   // relationship_count
   //
-  template <>
-  struct alias_traits<
-    ::xle::relationship_record,
-    id_pgsql,
-    access::view_traits_impl< ::xle::relationship_count, id_pgsql >::forward_tag>
-  {
-    static const char table_name[];
-  };
-
-  template <>
-  struct alias_traits<
-    ::xle::relationship_record,
-    id_pgsql,
-    access::view_traits_impl< ::xle::relationship_count, id_pgsql >::reverse_tag>
-  {
-    static const char table_name[];
-  };
-
-  struct access::view_traits_impl< ::xle::relationship_count, id_pgsql >::query_columns
-  {
-    // forward
-    //
-    typedef
+  struct access::view_traits_impl< ::xle::relationship_count, id_pgsql >::query_columns:
     odb::pointer_query_columns<
       ::xle::relationship_record,
       id_pgsql,
-      odb::alias_traits< ::xle::relationship_record,
-        id_pgsql,
-        access::view_traits_impl< ::xle::relationship_count, id_pgsql >::forward_tag> >
-    forward;
-
-    // reverse
-    //
-    typedef
-    odb::pointer_query_columns<
-      ::xle::relationship_record,
-      id_pgsql,
-      odb::alias_traits< ::xle::relationship_record,
-        id_pgsql,
-        access::view_traits_impl< ::xle::relationship_count, id_pgsql >::reverse_tag> >
-    reverse;
+      odb::access::object_traits_impl< ::xle::relationship_record, id_pgsql > >
+  {
   };
 }
 

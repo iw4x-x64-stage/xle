@@ -999,14 +999,20 @@ namespace odb
     r += "FROM \"relationship\" AS \"forward\"";
 
     r += " LEFT JOIN \"relationship\" AS \"reverse\" ON";
-    // From model.hxx:85:5
+    // From model.hxx:86:5
     r += query_columns::forward::id.target == query_columns::reverse::id.owner && query_columns::forward::id.owner == query_columns::reverse::id.target;
 
-    if (!q.empty ())
+    query_base_type c (
+      // From model.hxx:89:5
+      (q.empty () ? query_base_type::true_expr : q) + "ORDER BY" + query_columns::forward::added + "," + query_columns::forward::id.target);
+
+    c.optimize ();
+
+    if (!c.empty ())
     {
       r += " ";
-      r += q.clause_prefix ();
-      r += q;
+      r += c.clause_prefix ();
+      r += c;
     }
 
     return r;
@@ -1062,16 +1068,6 @@ namespace odb
 
   const char access::view_traits_impl< ::xle::relationship_count, id_pgsql >::
   query_statement_name[] = "query_xle_relationship_count";
-
-  const char alias_traits<  ::xle::relationship_record,
-    id_pgsql,
-    access::view_traits_impl< ::xle::relationship_count, id_pgsql >::forward_tag>::
-  table_name[] = "\"forward\"";
-
-  const char alias_traits<  ::xle::relationship_record,
-    id_pgsql,
-    access::view_traits_impl< ::xle::relationship_count, id_pgsql >::reverse_tag>::
-  table_name[] = "\"reverse\"";
 
   bool access::view_traits_impl< ::xle::relationship_count, id_pgsql >::
   grow (image_type& i,
@@ -1140,11 +1136,7 @@ namespace odb
       "SELECT "
       "count(*) ");
 
-    r += "FROM \"relationship\" AS \"forward\"";
-
-    r += " LEFT JOIN \"relationship\" AS \"reverse\" ON";
-    // From model.hxx:107:5
-    r += query_columns::forward::id.target == query_columns::reverse::id.owner && query_columns::forward::id.owner == query_columns::reverse::id.target;
+    r += "FROM \"relationship\"";
 
     if (!q.empty ())
     {

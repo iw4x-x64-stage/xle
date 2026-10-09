@@ -79,12 +79,14 @@ namespace xle
   };
 
   // The relationship together with whether the target follows the owner
-  // back (the reverse relationship exists).
+  // back (the reverse relationship exists), in the order the targets were
+  // followed (see social_store::people()).
   //
-  #pragma db view object(relationship_record = forward)               \
-    object(relationship_record = reverse left:                        \
-           forward::id.target == reverse::id.owner &&                 \
-           forward::id.owner == reverse::id.target)                   \
+  #pragma db view object(relationship_record = forward)                 \
+    object(relationship_record = reverse left:                          \
+           forward::id.target == reverse::id.owner &&                   \
+           forward::id.owner == reverse::id.target)                     \
+    query((?) + "ORDER BY" + forward::added + "," + forward::id.target) \
     pointer(unique_ptr)
   struct relationship_entry
   {
@@ -103,10 +105,7 @@ namespace xle
 
   // The number of relationships.
   //
-  #pragma db view object(relationship_record = forward)               \
-    object(relationship_record = reverse left:                        \
-           forward::id.target == reverse::id.owner &&                 \
-           forward::id.owner == reverse::id.target)
+  #pragma db view object(relationship_record)
   struct relationship_count
   {
     #pragma db column("count(*)")
