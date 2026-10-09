@@ -15,6 +15,7 @@
 #include <boost/asio/signal_set.hpp>
 #include <boost/asio/ssl/context.hpp>
 
+#include <libobe/endpoint.hxx>
 #include <libobe/authenticator-xbl.hxx>
 
 #include <libxle/version.hxx>
@@ -296,27 +297,19 @@ namespace xle
     }
     catch (const boost::system::system_error& e)
     {
-      ostringstream os;
-      os << ep;
       println (cerr, "error: unable to listen on {}: {}",
-               os.str (), e.code ().message ());
+               ep, e.code ().message ());
       throw failed ();
     }
 
     if (verb >= 2)
-    {
-      ostringstream os;
-      os << server->endpoint ();
-      println (cerr, "listening on {}", os.str ());
-    }
+      println (cerr, "listening on {}", server->endpoint ());
 
     // Flush so that whoever reads the endpoint gets it right away.
     //
     if (o.print_endpoint ())
     {
-      ostringstream os;
-      os << server->endpoint ();
-      println ("{}", os.str ());
+      println ("{}", server->endpoint ());
       fflush (stdout);
     }
 
