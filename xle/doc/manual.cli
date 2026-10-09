@@ -23,10 +23,12 @@ its friends list and to tell them about each other's games. \c{xle} keeps
 the state of these services, starting with the social relationships, in a
 PostgreSQL database.
 
-The current version of \c{xle} prepares this database: with \c{--migrate} it
-creates the database schema or migrates it to the current version and exits.
-The services themselves arrive in the later versions, and this document
-describes their deployment as they do.
+The current version of \c{xle} serves the social relationships, the people
+lists that the game polls for its friends list, over HTTPS. The game
+authenticates each request with a platform token, the same kind of token
+that it presents to \c{obe}, which \c{xle} verifies on its own. With
+\c{--migrate} \c{xle} instead creates the database schema or migrates it to
+the current version and exits.
 
 The examples in this document assume a Fedora or Debian-based Linux system
 and use the following locations:
@@ -34,6 +36,8 @@ and use the following locations:
 \
 /opt/xle/                       installation
 /etc/xle/xle.options            options file
+/etc/xle/tls/cert.pem           TLS certificate
+/etc/xle/tls/key.pem            TLS private key
 /var/lib/xle/                   home of the xle user
 \
 
@@ -154,7 +158,34 @@ $ sudo useradd --system --user-group --create-home \
 
 |
 
-\li|\n\b{4. Write Options File}\n
+\li|\n\b{4. Create TLS Certificate}\n
+
+The server needs a TLS certificate and its private key in the PEM format.
+IW4x client determines which certificates it accepts, so consult its
+documentation for the production certificate. For a test deployment we can
+generate a self-signed one:
+
+\
+$ sudo mkdir -p /etc/xle/tls
+$ sudo openssl req -x509 -newkey rsa:2048 -noenc -days 365 \
+  -subj /CN=xle.example.org                                \
+  -keyout /etc/xle/tls/key.pem -out /etc/xle/tls/cert.pem
+\
+
+The private key is a secret readable by \c{root} and the \c{xle} group
+only:
+
+\
+$ sudo chown root:xle /etc/xle/tls/key.pem
+$ sudo chmod 640 /etc/xle/tls/key.pem
+\
+
+\N|If \c{obe} runs on the same host, then both can use the same certificate,
+since the clients reach both at the same address.|
+
+|
+
+\li|\n\b{5. Write Options File}\n
 
 \c{xle} reads its options from the file that we pass with
 \c{--options-file}. Each option is on its own line, optionally followed by a
@@ -164,8 +195,19 @@ comments. Let's create \c{/etc/xle/xle.options} with the following contents:
 \
 # The xle options (see xle --help for details).
 #
---db-name xle
---db-host /var/run/postgresql
+--tls-certificate /etc/xle/tls/cert.pem
+--tls-key         /etc/xle/tls/key.pem
+--db-name         xle
+--db-host         /var/run/postgresql
+--verbose         2
+\
+
+\c{xle} listens on port 443 by default. If \c{obe} already listens there on
+the same address, then we give \c{xle} the port that IW4x client connects to
+for the social services, for example:
+
+\
+--port 8444
 \
 
 The file is readable by \c{root} and the \c{xle} group only, since it holds
@@ -179,7 +221,7 @@ $ sudo chmod 640 /etc/xle/xle.options
 
 |
 
-\li|\n\b{5. Create Database Schema}\n
+\li|\n\b{6. Create Database Schema}\n
 
 \c{xle} creates its database schema when run with \c{--migrate}, which we do
 as the \c{xle} user:
@@ -191,14 +233,91 @@ created database xle schema version 1
 \
 
 The same command migrates the schema after an upgrade (see
-\l{#upgrade-schema Migrating Database Schema}).||
+\l{#upgrade-schema Migrating Database Schema}).
+
+Now we can check the configuration by running \c{xle} in the foreground.
+Binding to port 443 requires a privilege that only the service gets (see the
+next step), so for this run we let the system choose the port:
+
+\
+$ sudo -u xle /opt/xle/bin/xle \
+  --options-file /etc/xle/xle.options --port 0
+listening on 0.0.0.0:41075
+^Cshutting down
+\
+
+|
+
+\li|\n\b{7. Install systemd Service}\n
+
+The service runs \c{xle} as the \c{xle} user with the capability to bind to
+port 443 and restarts it if it fails. We save the following unit as
+\c{/etc/systemd/system/xle.service}:
+
+\
+[Unit]
+Description=IW4x Xbox Live social services server
+Wants=network-online.target
+After=network-online.target postgresql.service
+
+[Service]
+Type=exec
+User=xle
+Group=xle
+ExecStart=/opt/xle/bin/xle --options-file /etc/xle/xle.options
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+\
+
+\N|If PostgreSQL runs on the same host, then add
+\c{Requires=postgresql.service} to the \c{[Unit]} section, which stops
+\c{xle} whenever PostgreSQL stops.|
+
+Then we enable and start the service:
+
+\
+$ sudo systemctl daemon-reload
+$ sudo systemctl enable --now xle
+$ systemctl status xle
+\
+
+|
+
+\li|\n\b{8. Open Firewall Port}\n
+
+Finally, we open the port. With \c{firewalld}, the Fedora default:
+
+\
+$ sudo firewall-cmd --permanent --add-port=443/tcp
+$ sudo firewall-cmd --reload
+\
+
+With \c{ufw}, common on Ubuntu:
+
+\
+$ sudo ufw allow 443/tcp
+\
+
+||
 
 \h1#operation|Operation|
 
 \h#operation-diagnostics|Diagnostics|
 
-\c{xle} writes its diagnostics to \c{stderr}. The \c{--verbose} option sets
-the verbosity from 0 to 3. Level 0 prints the errors, and each next level
+\c{xle} writes its diagnostics to \c{stderr} and \c{systemd} sends them to the
+journal, where we can follow them:
+
+\
+$ journalctl -u xle -f
+\
+
+The \c{--verbose} option sets the verbosity from 0 to 3. Level 0 prints the errors, and each next level
 adds a kind of message: warnings at 1 (the default), informational messages
 at 2, and trace messages at 3. The \c{-q}, \c{-v}, and \c{-V} options are the
 shortcuts for levels 0, 2, and 3.
@@ -303,20 +422,23 @@ $ bpkg status xle
 !xle configured 0.1.0 available 0.2.0
 \
 
-If the new version changes the database schema, then the upgrade also
-migrates it, and we want a fresh backup before that (see
+The upgrade stops the service, so the clients get no answers until it is
+started again. If the new version changes the database schema, then the
+upgrade also migrates it, and we want a fresh backup before that (see
 \l{#operation-backup Backups}).
 
 We uninstall the old version before installing the new one, so that the
 files the new version no longer has don't remain installed:
 
 \
+$ sudo systemctl stop xle
 $ bpkg uninstall --all --recursive
 $ bpkg build --upgrade --recursive xle
 $ bpkg install --all --recursive
 $ sudo -u xle /opt/xle/bin/xle \
   --options-file /etc/xle/xle.options --migrate -v
 migrated database xle schema from version 1 to 2
+$ sudo systemctl start xle
 \
 
 \N|The \c{--recursive} option makes \c{bpkg} upgrade and install the
