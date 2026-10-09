@@ -58,7 +58,8 @@ namespace xle
     {
       if (const xuid u (parse_user (t.path[1])); u != c.user)
         co_return service_error (403,
-                                 "people of user {} not accessible",
+                                 "people list of user {} is not the "
+                                 "caller's",
                                  to_underlying (u));
 
       if (const string* s = t.parameter ("view"))

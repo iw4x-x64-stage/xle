@@ -38,7 +38,7 @@ EOI
 EOO
 %.+: warning: invalid platform token: not a test token%
 seen user 2
-%.+: warning: user 2: people of user 1 not accessible%
+%.+: warning: user 2: people list of user 1 is not the caller's%
 seen user 1
 %.+: warning: user 1: method PUT not allowed%
 %.+: warning: unknown target%

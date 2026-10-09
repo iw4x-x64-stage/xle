@@ -50,7 +50,7 @@
   PUT 1 /users/xuid(1)/people
   GET 1 /users/xuid(1)/people/xuid(2)
   EOI
-  403 people of user 2 not accessible
+  403 people list of user 2 is not the caller's
   400 invalid user 'someone': expected xuid(<xuid>)
   400 invalid relationship view 'Followers'
   400 invalid maximum items '-1'
