@@ -4,6 +4,11 @@
 intf_libs = # Interface dependencies.
 impl_libs = # Implementation dependencies.
 
+# The utility declarations and the contract checking facility come from
+# libobe.
+#
+import intf_libs = libobe%lib{obe}
+
 lib{xle}: {hxx ixx txx cxx}{** -version} hxx{version} $impl_libs $intf_libs
 
 hxx{version}: in{version} $src_root/manifest
