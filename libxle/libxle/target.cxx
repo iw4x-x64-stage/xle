@@ -133,11 +133,8 @@ namespace xle
   }
 
   xuid
-  parse_user (string_view s, xuid caller)
+  parse_user (string_view s)
   {
-    if (s == "me")
-      return caller;
-
     static const string_view prefix ("xuid(");
 
     if (!s.starts_with (prefix) || !s.ends_with (')'))

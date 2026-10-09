@@ -56,11 +56,9 @@ EOO
 : user
 :
 $* <<EOI >>EOO
-user me
 user xuid(2533274790395904)
 user xuid(18446744073709551615)
 EOI
-1
 2533274790395904
 18446744073709551615
 EOO
@@ -70,6 +68,7 @@ EOO
 :
 $* <<EOI >>EOO
 user
+user me
 user you
 user xuid()
 user xuid(-1)
@@ -79,6 +78,7 @@ user xuid(18446744073709551616)
 user xuid(1
 EOI
 invalid: invalid user '': expected xuid(<xuid>)
+invalid: invalid user 'me': expected xuid(<xuid>)
 invalid: invalid user 'you': expected xuid(<xuid>)
 invalid: invalid xuid ''
 invalid: invalid xuid '-1'

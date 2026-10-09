@@ -45,11 +45,14 @@ namespace xle
     parameter (string_view name) const;
   };
 
-  // Return the user of the path segment, which is either xuid(<decimal>) or
-  // me, which stands for the caller. Throw invalid_input if it is neither.
+  // Return the user of the path segment, xuid(<decimal>). Throw
+  // invalid_input if it is not one.
+  //
+  // Note that Xbox Live also takes me for the caller, but the title always
+  // names the user with the XUID, so we don't.
   //
   LIBXLE_SYMEXPORT xuid
-  parse_user (string_view segment, xuid caller);
+  parse_user (string_view segment);
 
   // Return the unsigned decimal integer. Throw invalid_input describing the
   // value as what if it is not one or is out of range.

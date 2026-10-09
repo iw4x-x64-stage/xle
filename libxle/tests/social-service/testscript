@@ -8,14 +8,14 @@
   : Test listing the people, the friends, and the favorites
   :
   $* <<EOI >>EOO
-  GET 1 /users/me/people
+  GET 1 /users/xuid(1)/people
   follow 1 2
   follow 2 1
   follow 1 3
   favorite 1 3
   GET 1 /users/xuid(1)/people
-  GET 1 /users/me/people?view=LegacyXboxLiveFriends
-  GET 1 /users/me/people?view=favorite
+  GET 1 /users/xuid(1)/people?view=LegacyXboxLiveFriends
+  GET 1 /users/xuid(1)/people?view=favorite
   EOI
   200 {"totalCount":0,"people":[]}
   200 {"totalCount":2,"people":[{"xuid":"2","isFavorite":false,"isFollowingCaller":true,"socialNetworks":["LegacyXboxLive"]},{"xuid":"3","isFavorite":true,"isFollowingCaller":false,"socialNetworks":[]}]}
@@ -30,9 +30,9 @@
   follow 1 2
   follow 1 3
   follow 1 4
-  GET 1 /users/me/people?maxItems=100
-  GET 1 /users/me/people?startIndex=1&maxItems=1
-  GET 1 /users/me/people?startIndex=3
+  GET 1 /users/xuid(1)/people?maxItems=100
+  GET 1 /users/xuid(1)/people?startIndex=1&maxItems=1
+  GET 1 /users/xuid(1)/people?startIndex=3
   EOI
   200 {"totalCount":3,"people":[{"xuid":"2","isFavorite":false,"isFollowingCaller":false,"socialNetworks":[]},{"xuid":"3","isFavorite":false,"isFollowingCaller":false,"socialNetworks":[]}]}
   200 {"totalCount":3,"people":[{"xuid":"3","isFavorite":false,"isFollowingCaller":false,"socialNetworks":[]}]}
@@ -45,11 +45,11 @@
   $* <<EOI >>EOO
   GET 1 /users/xuid(2)/people
   GET 1 /users/someone/people
-  GET 1 /users/me/people?view=Followers
-  GET 1 /users/me/people?maxItems=-1
+  GET 1 /users/xuid(1)/people?view=Followers
+  GET 1 /users/xuid(1)/people?maxItems=-1
   GET 1 people
-  PUT 1 /users/me/people
-  GET 1 /users/me/people/xuid(2)
+  PUT 1 /users/xuid(1)/people
+  GET 1 /users/xuid(1)/people/xuid(2)
   EOI
   403 people of user 2 not accessible
   400 invalid user 'someone': expected xuid(<xuid>)
@@ -57,6 +57,6 @@
   400 invalid maximum items '-1'
   400 request target must start with '/'
   405 method PUT not allowed
-  404 unknown target '/users/me/people/xuid(2)'
+  404 unknown target '/users/xuid(1)/people/xuid(2)'
   EOO
 }}

@@ -69,7 +69,7 @@ namespace xle
     size_t count (settings_.max_items);
     try
     {
-      if (const xuid u (parse_user (p[1], caller)); u != caller)
+      if (const xuid u (parse_user (p[1])); u != caller)
         co_return error (403,
                          "people of user {} not accessible",
                          to_underlying (u));

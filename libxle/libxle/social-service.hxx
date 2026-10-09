@@ -38,7 +38,7 @@ namespace xle
   //
   // GET /users/{user}/people[?view=<view>&startIndex=<n>&maxItems=<n>]
   //
-  // Where {user} is xuid(<decimal>) or me and must be the caller (see
+  // Where {user} is xuid(<decimal>) and must be the caller (see
   // parse_user()), and the query parameters are:
   //
   // view        All (the default), Favorite, or LegacyXboxLiveFriends (see

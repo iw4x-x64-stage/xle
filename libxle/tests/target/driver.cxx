@@ -22,8 +22,7 @@ using namespace xle;
 // target <target>  Parse the request target and print its path segments
 //                  on one line and query parameters on the next, each
 //                  enclosed in [].
-// user <segment>   Parse the user path segment (with 1 as the caller) and
-//                  print the XUID.
+// user <segment>   Parse the user path segment and print the XUID.
 //
 // On invalid input print 'invalid: <description>' and carry on.
 //
@@ -62,7 +61,7 @@ main ()
       }
       else if (c == "user")
       {
-        println ("{}", to_underlying (parse_user (a, xuid {1})));
+        println ("{}", to_underlying (parse_user (a)));
       }
       else
       {
