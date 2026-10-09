@@ -1,0 +1,37 @@
+// Copyright (c) the IW4x authors (see the AUTHORS file).
+// SPDX-License-Identifier: GPL-3.0-only WITH AdditionRef-IW4x-Exception-1.1
+
+#pragma once
+
+// The numeric version format is AAAAABBBBBCCCCCDDDE where:
+//
+// AAAAA - major version number
+// BBBBB - minor version number
+// CCCCC - bugfix version number
+// DDD   - alpha / beta (DDD + 500) version number
+// E     - final (0) / snapshot (1)
+//
+// When DDDE is not 0, 1 is subtracted from AAAAABBBBBCCCCC. For example:
+//
+// Version      AAAAABBBBBCCCCCDDDE
+//
+// 0.1.0        0000000001000000000
+// 0.1.2        0000000001000020000
+// 1.2.3        0000100002000030000
+// 2.2.0-a.1    0000200001999990010
+// 3.0.0-b.2    0000299999999995020
+// 2.2.0-a.1.z  0000200001999990011
+//
+#define XLE_VERSION       $xle.version.project_number$ULL
+#define XLE_VERSION_STR   "$xle.version.project$"
+#define XLE_VERSION_ID    "$xle.version.project_id$"
+#define XLE_VERSION_FULL  "$xle.version$"
+
+#define XLE_VERSION_MAJOR $xle.version.major$
+#define XLE_VERSION_MINOR $xle.version.minor$
+#define XLE_VERSION_PATCH $xle.version.patch$
+
+#define XLE_PRE_RELEASE   $xle.version.pre_release$
+
+#define XLE_SNAPSHOT_SN   $xle.version.snapshot_sn$ULL
+#define XLE_SNAPSHOT_ID   "$xle.version.snapshot_id$"

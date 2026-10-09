@@ -4,8 +4,9 @@
 social relationships (friends and followers), presence, multiplayer
 activities and invites, privacy, and the real-time activity notifications.
 
-The repository holds the following package:
+The repository holds the following packages:
 
+* [`xle`](xle/README.md): the server executable.
 * [`libxle`](libxle/README.md): the services library.
 
 Documentation: https://iw4x.io/projects/xle/doc/

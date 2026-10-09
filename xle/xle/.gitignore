@@ -1,0 +1,9 @@
+/xle
+
+# Testscript output directory (can be symlink).
+#
+test-xle
+
+# Generated options parser (backlinked from out in the development build).
+#
+/xle-options.?xx

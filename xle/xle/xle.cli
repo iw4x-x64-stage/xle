@@ -1,0 +1,129 @@
+// Copyright (c) the IW4x authors (see the AUTHORS file).
+// SPDX-License-Identifier: GPL-3.0-only WITH AdditionRef-IW4x-Exception-1.1
+
+include <string>;
+include <cstddef>;
+include <cstdint>;
+
+namespace xle
+{
+  {
+    "<options> <file> <level> <name> <user> <pass> <host> <port> <num>",
+
+    "\h|SYNOPSIS|
+
+     \c{\b{xle} [<options>]}
+
+     \h|DESCRIPTION|
+
+     \cb{xle} serves the Xbox Live social services that IW4x connects to:
+     the social relationships (friends and followers), presence,
+     multiplayer activities and invites, privacy, and the real-time
+     activity notifications. It keeps its state in a PostgreSQL database.
+
+     Currently \cb{xle} only creates and migrates the database schema (see
+     \cb{--migrate}); the services are served by later versions."
+  }
+
+  class options
+  {
+    "\h|OPTIONS|"
+
+    bool --help {"Print usage information and exit."}
+    bool --version {"Print version and exit."}
+
+    std::string --options-file
+    {
+      "<file>",
+      "Read additional options from <file>. Each option should appear on a
+       separate line optionally followed by space or equal sign (\cb{=}) and
+       an option value. Empty lines and lines starting with \cb{#} are
+       ignored."
+    }
+
+    bool -v
+    {
+      "Print informational messages, such as the database schema version.
+       This is equivalent to \cb{--verbose 2}."
+    }
+
+    bool -V
+    {
+      "Print trace messages. This is equivalent to \cb{--verbose 3}."
+    }
+
+    bool --quiet|-q
+    {
+      "Print errors only. This is equivalent to \cb{--verbose 0}."
+    }
+
+    std::uint16_t --verbose = 1
+    {
+      "<level>",
+      "Set the diagnostics verbosity to <level> between 0 and 3. Level 0
+       prints errors only, level 1 (the default) also warnings, level 2 also
+       informational messages, and level 3 also trace messages."
+    }
+
+    std::string --db-name
+    {
+      "<name>",
+      "The PostgreSQL database <name>. Required."
+    }
+
+    std::string --db-user
+    {
+      "<user>",
+      "The PostgreSQL database user. If unspecified, the user name of the
+       process is used."
+    }
+
+    std::string --db-password
+    {
+      "<pass>",
+      "The PostgreSQL database password. Note that the command line is
+       visible to other users, so consider specifying it in an options file
+       (see \cb{--options-file}) or in the PostgreSQL password file (see the
+       \cb{PGPASSFILE} environment variable). If unspecified, no password is
+       sent."
+    }
+
+    std::string --db-host
+    {
+      "<host>",
+      "The PostgreSQL database host name, address, or UNIX-domain socket
+       directory. If unspecified, the local UNIX-domain socket is used."
+    }
+
+    std::uint16_t --db-port = 0
+    {
+      "<port>",
+      "The PostgreSQL database port. If unspecified, the default port is
+       used."
+    }
+
+    std::size_t --db-max-connections = 5
+    {
+      "<num>",
+      "The most concurrent PostgreSQL database connections, which is also the
+       number of threads that perform the database operations. The default
+       is 5."
+    }
+
+    std::size_t --db-retry = 10
+    {
+      "<num>",
+      "Retry a database operation that fails with a recoverable error (for
+       example, a serialization failure due to a concurrent update or a lost
+       connection) up to <num> times. The default is 10."
+    }
+
+    bool --migrate
+    {
+      "Create the PostgreSQL database schema if there is none or migrate it
+       to the current version, then exit. Several servers may share the
+       database, in which case the schema should be migrated once, before
+       starting the servers of the new version."
+    }
+  };
+}

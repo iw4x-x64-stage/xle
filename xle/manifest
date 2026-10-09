@@ -1,0 +1,20 @@
+: 1
+name: xle
+version: 0.1.0-a.0.z
+language: c++
+project: xle
+summary: Xbox Live social services server for IW4x.
+license: other: GPL-3.0-only with IW4x Linking Exception 1.1
+topics: game, Xbox Live, social network
+description-file: README.md
+changes-file: NEWS
+url: https://iw4x.io/projects/xle/
+doc-url: https://iw4x.io/projects/xle/doc/
+src-url: https://github.com/iw4x-x64-stage/xle
+email: wroy@proton.me
+build-error-email: wroy@proton.me
+depends: * build2 >= 0.18.0
+depends: * bpkg >= 0.18.0
+depends: libxle == $
+depends: * cli ^1.2.0- ? ($config.xle.develop)
+builds: default
