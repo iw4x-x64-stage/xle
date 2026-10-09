@@ -9,6 +9,10 @@ impl_libs = # Implementation dependencies.
 #
 import intf_libs = libobe%lib{obe}
 
+# The stores and the services are coroutines (Asio awaitables).
+#
+import intf_libs += libboost-asio%lib{boost_asio}
+
 lib{xle}: {hxx ixx txx cxx}{** -version} hxx{version} $impl_libs $intf_libs
 
 hxx{version}: in{version} $src_root/manifest
