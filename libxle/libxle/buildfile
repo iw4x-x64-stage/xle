@@ -13,10 +13,14 @@ import intf_libs = libobe%lib{obe}
 #
 import intf_libs += libboost-asio%lib{boost_asio}
 
+# The services reply with JSON.
+#
+import impl_libs = libboost-json%lib{boost_json}
+
 # The PostgreSQL stores use ODB, which is kept out of the public headers.
 #
 import libodb    = libodb%lib{odb}
-import impl_libs = libodb-pgsql%lib{odb-pgsql}
+import impl_libs += libodb-pgsql%lib{odb-pgsql}
 
 impl_libs += $libodb
 
