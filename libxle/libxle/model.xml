@@ -1,0 +1,17 @@
+<changelog xmlns="http://www.codesynthesis.com/xmlns/odb/changelog" database="pgsql" version="1">
+  <model version="1">
+    <table name="relationship" kind="object">
+      <column name="owner" type="BIGINT" null="false"/>
+      <column name="target" type="BIGINT" null="false"/>
+      <column name="favorite" type="BOOLEAN" null="false"/>
+      <column name="added" type="BIGINT" null="false"/>
+      <primary-key>
+        <column name="owner"/>
+        <column name="target"/>
+      </primary-key>
+      <index name="relationship_target_i">
+        <column name="target"/>
+      </index>
+    </table>
+  </model>
+</changelog>
