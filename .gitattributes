@@ -28,3 +28,16 @@
 # SPDX header (see libxle/libxle/model.hxx).
 #
 libxle/libxle/model.xml -spdx linguist-generated
+
+# The pregenerated code is overwritten by the ODB and CLI compilers in the
+# development build and the checksums of its sources are compared with the
+# sha256sum output as is (see the pregenerated-current tests), so they cannot
+# carry the SPDX header.
+#
+**/pregenerated/** -spdx
+
+# The identity register (see mailmap and authors in the IW4x toolchain) and
+# the clangd configuration are data files without a header.
+#
+identities -spdx
+.clangd -spdx
