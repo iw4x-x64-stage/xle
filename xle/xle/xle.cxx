@@ -249,7 +249,9 @@ namespace xle
     }
 
     // Verify the Xbox Live style tokens that IW4x issues for the services
-    // (see obe::verify_xbl_token() for their form). Note that the gamertag
+    // (see obe::verify_xbl_token() for their form). The verification lives
+    // in libobe because obe's Demonware authentication server uses it first
+    // and xle depends on libobe, which also tests it. Note that the gamertag
     // is the user name of the identity.
     //
     auto verify = [] (string_view t, string_view a)
