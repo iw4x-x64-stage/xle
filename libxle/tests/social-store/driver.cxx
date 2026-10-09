@@ -8,6 +8,7 @@
 #include <random>
 #include <chrono>
 #include <sstream>
+#include <concepts>  // movable
 #include <utility>   // to_underlying()
 #include <iostream>
 #include <optional>
@@ -80,7 +81,7 @@ private:
 
 // Run the store operation to completion and return its result.
 //
-template <typename T>
+template <movable T>
 static T
 run (asio::awaitable<T> a)
 {

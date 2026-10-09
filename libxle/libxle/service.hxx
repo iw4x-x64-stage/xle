@@ -95,8 +95,7 @@ namespace xle
   // Return the error reply with the status and the error formatted from the
   // arguments.
   //
-  template <typename... A>
-    requires formattable_arguments<A...>
+  template <formattable_argument... A>
   inline service_reply
   service_error (uint16_t status, std::format_string<A...> f, A&&... a)
   {

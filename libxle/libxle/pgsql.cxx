@@ -64,13 +64,20 @@ namespace xle
   // are not quoted or escaped) and so should never come from the external
   // input. Such values are passed with ODB queries instead.
   //
-  template <typename... A>
-    requires formattable_arguments<A...>
+  template <formattable_argument... A>
   static unsigned long long
   execute (odb::pgsql::connection& c, std::format_string<A...> f, A&&... a)
   {
     return c.execute (std::format (f, std::forward<A> (a)...));
   }
+
+  // The database operation: a function that works with the database in a
+  // transaction and returns the result (see transaction_pool below).
+  //
+  template <typename F>
+  concept database_operation =
+    std::invocable<const F&, odb::database&> &&
+    !std::is_void_v<std::invoke_result_t<const F&, odb::database&>>;
 
   // pgsql_database
   //
@@ -103,10 +110,7 @@ namespace xle
     // Note that the operation is called on the pool thread and so should not
     // touch the caller's state other than by its (copied) captures.
     //
-    template <typename F>
-      requires std::invocable<const F&, odb::database&> &&
-               (!std::is_void_v<std::invoke_result_t<const F&,
-                                                     odb::database&>>)
+    template <database_operation F>
     awaitable<std::invoke_result_t<const F&, odb::database&>>
     execute (F f)
     {
@@ -122,7 +126,7 @@ namespace xle
       co_return co_await asio::co_spawn (pool, move (run), asio::use_awaitable);
     }
 
-    template <typename F>
+    template <database_operation F>
     std::invoke_result_t<const F&, odb::database&>
     perform (const F& f)
     {
