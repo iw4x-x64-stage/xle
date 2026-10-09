@@ -77,13 +77,18 @@ set up PostgreSQL database 'xle' owned by role 'xle'? [y/n]: y
 + psql: CREATE ROLE xle LOGIN
 + psql: CREATE DATABASE xle OWNER xle TEMPLATE template0 ...
 database 'xle' is ready
-  info: run 'xle --db-name xle --migrate' as user 'xle' to create
-  its schema
+  info: run 'xle --db-name xle --db-host /var/run/postgresql
+  --migrate' as user 'xle' to create its schema
 \
 
 The \c{xle} role authenticates with the \c{peer} method, which is the
 PostgreSQL default for the local UNIX-domain socket: the system user that
 runs \c{xle} has the name of the role and needs no password.
+
+The script also prints the directory of the server's socket, which we pass
+to \c{xle} with \c{--db-host}. The \c{libpq} library that \c{xle} is built
+with looks for the socket in \c{/tmp} unless told otherwise, and the Debian
+server only creates it in \c{/var/run/postgresql}.
 
 The script skips the steps that are already done, so it is safe to run it
 again. It can also print its plan without doing anything (\c{--print-only})
@@ -160,6 +165,7 @@ comments. Let's create \c{/etc/xle/xle.options} with the following contents:
 # The xle options (see xle --help for details).
 #
 --db-name xle
+--db-host /var/run/postgresql
 \
 
 The file is readable by \c{root} and the \c{xle} group only, since it holds
@@ -202,7 +208,7 @@ example, this is what we get while the server is down:
 
 \
 error: unable to migrate database xle: database error: connection to
-server on socket \"/run/postgresql/.s.PGSQL.5432\" failed: No such
+server on socket \"/var/run/postgresql/.s.PGSQL.5432\" failed: No such
 file or directory
 \
 
@@ -366,13 +372,15 @@ user we name with \c{--test-role}:
 
 \
 $ xle/etc/private/postgresql/xle-postgresql-setup --test-role \"$USER\"
-$ bdep test '!config.libxle.test.pgsql=postgres'
+$ PGHOST=/var/run/postgresql \
+  bdep test '!config.libxle.test.pgsql=postgres'
 \
 
 Each test creates its own database, named \c{xle_test_} followed by a random
 suffix, and drops it once done. The tests connect with the \c{libpq}
-defaults, so the \c{PGHOST} and \c{PGPORT} environment variables select
-another server.
+defaults, so the \c{PGHOST} environment variable names the server's socket
+directory (see \l{#install Installation}), and together with \c{PGPORT} it
+can also select another server.
 
 \h#develop-schema|Changing Database Schema|
 
