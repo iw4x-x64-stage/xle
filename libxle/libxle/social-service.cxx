@@ -62,13 +62,13 @@ namespace xle
                                  "caller's",
                                  to_underlying (u));
 
-      if (const string* s = t.parameter ("view"))
+      if (optional<const string&> s = t.parameter ("view"))
         v = to_relationship_view (*s);
 
-      if (const string* s = t.parameter ("startIndex"))
+      if (optional<const string&> s = t.parameter ("startIndex"))
         start = parse_unsigned (*s, "start index");
 
-      if (const string* s = t.parameter ("maxItems"))
+      if (optional<const string&> s = t.parameter ("maxItems"))
         count = min<uint64_t> (parse_unsigned (*s, "maximum items"), count);
     }
     catch (const invalid_argument& e)

@@ -39,9 +39,9 @@ namespace xle
     vector<pair<string, string>> query;
 
     // Return the value of the first parameter with the specified name or
-    // nullptr if there is none.
+    // nullopt if there is none.
     //
-    const string*
+    optional<const string&>
     parameter (string_view name) const;
   };
 

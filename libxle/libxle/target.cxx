@@ -103,16 +103,16 @@ namespace xle
     }
   }
 
-  const string* request_target::
+  optional<const string&> request_target::
   parameter (string_view n) const
   {
     for (const pair<string, string>& p: query)
     {
       if (p.first == n)
-        return &p.second;
+        return p.second;
     }
 
-    return nullptr;
+    return nullopt;
   }
 
   uint64_t

@@ -5,6 +5,7 @@
 #include <print>
 #include <utility>   // to_underlying()
 #include <iostream>
+#include <optional>
 #include <stdexcept> // invalid_argument
 
 #include <libxle/target.hxx>
@@ -53,11 +54,11 @@ main ()
 
         if (!t.query.empty ())
         {
-          const string* v (t.parameter (t.query.front ().first));
-          assert (v != nullptr && *v == t.query.front ().second);
+          optional<const string&> v (t.parameter (t.query.front ().first));
+          assert (v && *v == t.query.front ().second);
         }
 
-        assert (t.parameter ("absent") == nullptr);
+        assert (!t.parameter ("absent"));
       }
       else if (c == "user")
       {
