@@ -34,11 +34,6 @@ namespace xle
 
   using asio::ip::tcp;
 
-  // The audience of the tokens the clients present: the origin of the
-  // social service, which they request the tokens for.
-  //
-  static const char social_audience[] = "https://social.xboxlive.com";
-
   namespace
   {
     // Thrown to terminate the process once the diagnostics has been issued.
@@ -253,18 +248,19 @@ namespace xle
       }
     }
 
-    // Verify the Xbox Live style tokens that IW4x issues for the social
-    // service (see obe::verify_xbl_token() for their form).
+    // Verify the Xbox Live style tokens that IW4x issues for the services
+    // (see obe::verify_xbl_token() for their form). Note that the gamertag
+    // is the user name of the identity.
     //
-    obe::xbl_settings xs;
-    xs.audience = social_audience;
-
-    auto verify = [xs = move (xs)] (string_view t)
+    auto verify = [] (string_view t, string_view a)
     {
-      const obe::auth_identity id (
+      obe::xbl_settings xs;
+      xs.audience = a;
+
+      obe::auth_identity id (
         obe::verify_xbl_token (t, system_clock::now (), xs));
 
-      return xuid {to_underlying (id.user)};
+      return caller {xuid {to_underlying (id.user)}, move (id.user_name)};
     };
 
     // Create the io_context. Note that it must outlive the server and the
@@ -273,14 +269,18 @@ namespace xle
     context ctx;
 
     pgsql_social_store store (db);
-    social_service service (store);
+    social_service social (store);
 
     // Start the server.
     //
     optional<social_server> server;
     try
     {
-      server.emplace (ctx.get_executor (), ep, tls, move (verify), service);
+      server.emplace (ctx.get_executor (),
+                      ep,
+                      tls,
+                      move (verify),
+                      vector<reference_wrapper<service>> {social});
     }
     catch (const boost::system::system_error& e)
     {

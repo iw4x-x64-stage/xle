@@ -7,7 +7,6 @@
 #include <boost/json/object.hpp>
 #include <boost/json/serialize.hpp>
 
-#include <libxle/target.hxx>
 
 using namespace std;
 
@@ -28,39 +27,27 @@ namespace xle
   {
   }
 
-  awaitable<service_reply> social_service::
-  handle (xuid caller, string_view method, string_view target)
+  string_view social_service::
+  audience () const noexcept
   {
-    // Return the error reply with the status and the formatted error.
-    //
-    auto error = [] <typename... A>
-      requires formattable_arguments<A...>
-      (uint16_t s, std::format_string<A...> f, A&&... a)
-    {
-      return service_reply {s,
-                            string (),
-                            std::format (f, std::forward<A> (a)...)};
-    };
+    return "https://social.xboxlive.com";
+  }
 
-    // Parse the target and see if it is the people list.
-    //
-    optional<request_target> t;
-    try
-    {
-      t.emplace (target);
-    }
-    catch (const invalid_argument& e)
-    {
-      co_return error (400, "{}", e.what ());
-    }
+  bool social_service::
+  match (const request_target& t) const
+  {
+    const strings& p (t.path);
+    return p.size () == 3 && p[0] == "users" && p[2] == "people";
+  }
 
-    const strings& p (t->path);
-
-    if (p.size () != 3 || p[0] != "users" || p[2] != "people")
-      co_return error (404, "unknown target '{}'", target);
-
-    if (method != "GET")
-      co_return error (405, "method {} not allowed", method);
+  awaitable<service_reply> social_service::
+  handle (const caller& c,
+          http_method m,
+          const request_target& t,
+          string_view)
+  {
+    if (m != http_method::get)
+      co_return service_method_error (m, {http_method::get});
 
     // Parse the user and the query parameters.
     //
@@ -69,28 +56,28 @@ namespace xle
     size_t count (settings_.max_items);
     try
     {
-      if (const xuid u (parse_user (p[1])); u != caller)
-        co_return error (403,
-                         "people of user {} not accessible",
-                         to_underlying (u));
+      if (const xuid u (parse_user (t.path[1])); u != c.user)
+        co_return service_error (403,
+                                 "people of user {} not accessible",
+                                 to_underlying (u));
 
-      if (const string* s = t->parameter ("view"))
+      if (const string* s = t.parameter ("view"))
         v = to_relationship_view (*s);
 
-      if (const string* s = t->parameter ("startIndex"))
+      if (const string* s = t.parameter ("startIndex"))
         start = parse_unsigned (*s, "start index");
 
-      if (const string* s = t->parameter ("maxItems"))
+      if (const string* s = t.parameter ("maxItems"))
         count = min<uint64_t> (parse_unsigned (*s, "maximum items"), count);
     }
     catch (const invalid_argument& e)
     {
-      co_return error (400, "{}", e.what ());
+      co_return service_error (400, "{}", e.what ());
     }
 
     // List the people.
     //
-    const people_page pp (co_await store_.people (caller, v, start, count));
+    const people_page pp (co_await store_.people (c.user, v, start, count));
 
     json::array ps;
     for (const person& x: pp.people)

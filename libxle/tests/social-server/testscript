@@ -11,6 +11,7 @@ GET /users/xuid(1)/people?maxItems=100 user:1
 EOI
 200 application/json {"totalCount":1,"people":[{"xuid":"2","isFavorite":false,"isFollowingCaller":false,"socialNetworks":[]}]}
 EOO
+seen user 1
 EOE
 
 : refused
@@ -21,20 +22,29 @@ GET /users/xuid(1)/people forged
 GET /users/xuid(1)/people user:2
 PUT /users/xuid(1)/people user:1
 GET /other user:1
+GET other user:1
 GET /users/xuid(666)/people user:666
 GET /users/xuid(1)/people *9000
+PATCH /users/xuid(1)/people user:1
 EOI
 401
 403
 405 GET
 404
+400
 503
 431
+501
 EOO
 %.+: warning: invalid platform token: not a test token%
+seen user 2
 %.+: warning: user 2: people of user 1 not accessible%
+seen user 1
 %.+: warning: user 1: method PUT not allowed%
-%.+: warning: user 1: unknown target '/other'%
+%.+: warning: unknown target%
+%.+: warning: request target must start with '/'%
+seen user 666
 %.+: error: database unavailable%
 %.+: warning: request too large%
+%.+: warning: method PATCH not implemented%
 EOE

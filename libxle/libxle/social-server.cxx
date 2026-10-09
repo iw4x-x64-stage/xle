@@ -6,6 +6,7 @@
 #include <print>
 #include <cstdio> // stderr
 #include <sstream>
+#include <algorithm> // find_if()
 
 #include <boost/asio/as_tuple.hpp>
 #include <boost/asio/co_spawn.hpp>
@@ -28,6 +29,28 @@ namespace xle
   using asio::use_awaitable;
   using asio::ip::tcp;
 
+  // Return the method or nullopt if it is not one the services serve.
+  //
+  static optional<http_method>
+  to_method (http::verb v)
+  {
+    static const pair<http::verb, http_method> methods[]
+    {
+      {http::verb::get,     http_method::get},
+      {http::verb::post,    http_method::post},
+      {http::verb::put,     http_method::put},
+      {http::verb::delete_, http_method::delete_}
+    };
+
+    for (const auto& [x, m]: methods)
+    {
+      if (x == v)
+        return m;
+    }
+
+    return nullopt;
+  }
+
   // The delay before accepting again after a failure.
   //
   static const chrono::seconds accept_retry_delay (1);
@@ -37,12 +60,14 @@ namespace xle
                  const tcp::endpoint& ep,
                  asio::ssl::context& t,
                  token_verifier v,
-                 social_service& s,
+                 vector<reference_wrapper<service>> s,
+                 caller_observer o,
                  social_server_settings ss)
     : acceptor_ (ex, ep),
       tls_ (t),
       verify_ (move (v)),
-      service_ (s),
+      services_ (move (s)),
+      observe_ (move (o)),
       settings_ (move (ss))
   {
   }
@@ -63,15 +88,31 @@ namespace xle
   awaitable<service_reply> social_server::
   handle (const string& n,
           string_view token,
-          string_view method,
-          string_view target)
+          http_method m,
+          const request_target& t,
+          string_view body)
   {
-    // Verify the token.
+    // Find the service that serves the target.
     //
-    optional<xuid> caller;
+    auto i (ranges::find_if (services_, [&t] (const service& s)
+    {
+      return s.match (t);
+    }));
+
+    if (i == services_.end ())
+    {
+      println (stderr, "{}: warning: unknown target", n);
+      co_return service_reply {404, string (), string ()};
+    }
+
+    service& s (*i);
+
+    // Verify the token for the service's audience.
+    //
+    optional<caller> c;
     try
     {
-      caller = verify_ (token);
+      c = verify_ (token, s.audience ());
     }
     catch (const invalid_argument& e)
     {
@@ -79,12 +120,16 @@ namespace xle
       co_return service_reply {401, string (), string ()};
     }
 
-    // Handle the request. Note that we cannot co_await in the handler.
+    // Let the observer see the caller and handle the request. Note that we
+    // cannot co_await in the handler.
     //
     optional<service_reply> r;
     try
     {
-      r = co_await service_.handle (*caller, method, target);
+      if (observe_ != nullptr)
+        co_await observe_ (*c);
+
+      r = co_await s.handle (*c, m, t, body);
     }
     catch (const store_error& e)
     {
@@ -97,7 +142,7 @@ namespace xle
     if (r->status != 200)
       println (stderr,
                "{}: warning: user {}: {}",
-               n, to_underlying (*caller), r->error);
+               n, to_underlying (c->user), r->error);
 
     co_return move (*r);
   }
@@ -172,26 +217,58 @@ namespace xle
 
       const http::request<http::string_body>& rq (p.get ());
 
-      // Handle the request and prepare the response.
+      // Map the method and parse the target, and handle the request.
       //
-      const service_reply r (
-        co_await handle (n,
-                         rq[http::field::authorization],
-                         rq.method_string (),
-                         rq.target ()));
+      service_reply r {501, string (), string ()};
 
+      if (const optional<http_method> m = to_method (rq.method ()))
+      {
+        optional<request_target> t;
+        try
+        {
+          t.emplace (rq.target ());
+        }
+        catch (const invalid_argument& e)
+        {
+          println (stderr, "{}: warning: {}", n, e.what ());
+          r.status = 400;
+        }
+
+        if (t)
+          r = co_await handle (n,
+                               rq[http::field::authorization],
+                               *m,
+                               *t,
+                               rq.body ());
+      }
+      else
+        println (stderr,
+                 "{}: warning: method {} not implemented",
+                 n, string (rq.method_string ()));
+
+      // Prepare the response.
+      //
       http::response<http::string_body> rs;
       rs.version (rq.version ());
       rs.keep_alive (rq.keep_alive ());
       rs.result (r.status);
       rs.set (http::field::server, "xle");
 
-      // The service only serves GET (see social_service).
-      //
       if (r.status == 405)
-        rs.set (http::field::allow, "GET");
+      {
+        string a;
+        for (http_method x: r.allow)
+        {
+          if (!a.empty ())
+            a += ", ";
 
-      if (r.status == 200)
+          a += to_string (x);
+        }
+
+        rs.set (http::field::allow, a);
+      }
+
+      if (r.status == 200 && !r.body.empty ())
       {
         rs.set (http::field::content_type, "application/json");
         rs.body () = r.body;

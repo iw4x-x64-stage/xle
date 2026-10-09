@@ -10,20 +10,26 @@
 #include <libxle/types.hxx>
 #include <libxle/utility.hxx>
 
-#include <libxle/social-service.hxx>
+#include <libxle/service.hxx>
 
 #include <libxle/export.hxx>
 
 namespace xle
 {
-  // Verify the platform token (the Authorization header value) and return
-  // the caller. Throw invalid_argument describing the problem if it is not
-  // valid.
+  // Verify the platform token (the Authorization header value) for the
+  // audience and return the caller. Throw invalid_argument describing the
+  // problem if it is not valid.
   //
-  // In production this is obe::verify_xbl_token() with the audience of the
-  // social service (see the xle executable).
+  // In production this is obe::verify_xbl_token() (see the xle executable).
   //
-  using token_verifier = move_only_function<xuid (string_view token) const>;
+  using token_verifier =
+    move_only_function<caller (string_view token, string_view audience) const>;
+
+  // Record that the caller made an authenticated request (for example, to
+  // tell who is online). Throw store_error if the store fails.
+  //
+  using caller_observer =
+    move_only_function<boost::asio::awaitable<void> (const caller&)>;
 
   struct social_server_settings
   {
@@ -36,15 +42,18 @@ namespace xle
 
   // The social server.
   //
-  // Serve the social service (see social_service) over HTTPS: verify the
-  // platform token of each request and pass the request to the service. A
-  // request without a valid token gets the 401 status, one that exceeds the
-  // size limits 431 or 413, and one the store fails 503.
+  // Serve the services (see service) over HTTPS: route each request by its
+  // path, verify its platform token for the service's audience, let the
+  // observer see the caller, and pass the request to the service. A request
+  // with an invalid target gets the 400 status, for a target no service
+  // matches 404, without a valid token 401, that exceeds the size limits 431
+  // or 413, that the store fails 503, and with a method no service serves
+  // 501.
   //
   // The diagnostics (invalid tokens, refused requests, store failures) are
   // printed to stderr.
   //
-  // The server, the TLS context, and the service should outlive the
+  // The server, the TLS context, and the services should outlive the
   // connections, which means the io_context should be stopped (and its
   // handlers destroyed) before they are destroyed.
   //
@@ -60,7 +69,8 @@ namespace xle
                    const tcp::endpoint&,
                    boost::asio::ssl::context&,
                    token_verifier,
-                   social_service&,
+                   vector<reference_wrapper<service>>,
+                   caller_observer = nullptr,
                    social_server_settings = {});
 
     social_server (const social_server&) = delete;
@@ -84,19 +94,22 @@ namespace xle
     boost::asio::awaitable<void>
     serve (tcp::socket);
 
-    // Verify the token and handle the request with the service.
+    // Route the request, verify the token, and handle the request with the
+    // service.
     //
     boost::asio::awaitable<service_reply>
     handle (const string& name,
             string_view token,
-            string_view method,
-            string_view target);
+            http_method,
+            const request_target&,
+            string_view body);
 
   private:
-    tcp::acceptor                acceptor_;
-    boost::asio::ssl::context&   tls_;
-    const token_verifier         verify_;
-    social_service&              service_;
-    const social_server_settings settings_;
+    tcp::acceptor                            acceptor_;
+    boost::asio::ssl::context&               tls_;
+    const token_verifier                     verify_;
+    const vector<reference_wrapper<service>> services_;
+    caller_observer                          observe_;
+    const social_server_settings             settings_;
   };
 }

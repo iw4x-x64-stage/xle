@@ -47,7 +47,6 @@
   GET 1 /users/someone/people
   GET 1 /users/xuid(1)/people?view=Followers
   GET 1 /users/xuid(1)/people?maxItems=-1
-  GET 1 people
   PUT 1 /users/xuid(1)/people
   GET 1 /users/xuid(1)/people/xuid(2)
   EOI
@@ -55,8 +54,7 @@
   400 invalid user 'someone': expected xuid(<xuid>)
   400 invalid relationship view 'Followers'
   400 invalid maximum items '-1'
-  400 request target must start with '/'
-  405 method PUT not allowed
-  404 unknown target '/users/xuid(1)/people/xuid(2)'
+  405 method PUT not allowed (GET)
+  unmatched
   EOO
 }}

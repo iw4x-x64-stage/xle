@@ -8,6 +8,7 @@
 #include <libxle/types.hxx>
 #include <libxle/utility.hxx>
 
+#include <libxle/service.hxx>
 #include <libxle/social-store.hxx>
 
 #include <libxle/export.hxx>
@@ -19,17 +20,6 @@ namespace xle
     // The most people a reply lists (maxItems is capped at it).
     //
     size_t max_items = 1000;
-  };
-
-  // The reply to a service request: the HTTP status code and, for the 200
-  // status, the JSON body. For the other statuses the error describes the
-  // problem (for the diagnostics, it is not sent).
-  //
-  struct service_reply
-  {
-    uint16_t status;
-    string   body;
-    string   error;
   };
 
   // The social relationships service (social.xboxlive.com).
@@ -59,11 +49,11 @@ namespace xle
   // socialNetworks names LegacyXboxLive for the friends (the people who
   // follow the caller back) and is empty otherwise.
   //
-  // A request for another target gets the 404 status, for another method
-  // 405, with an invalid user or query 400, and for the list of another user
-  // 403 (the title only ever asks for its own).
+  // A request with another method gets the 405 status, with an invalid
+  // user or query 400, and for the list of another user 403 (the title only
+  // ever asks for its own).
   //
-  class LIBXLE_SYMEXPORT social_service
+  class LIBXLE_SYMEXPORT social_service: public service
   {
   public:
     // The store should outlive the service.
@@ -71,15 +61,17 @@ namespace xle
     explicit
     social_service (social_store&, social_settings = {});
 
-    // Handle the request of the authenticated caller. The target is in the
-    // origin form (see request_target). Throw store_error if the store
-    // fails.
-    //
-    boost::asio::awaitable<service_reply>
-    handle (xuid caller, string_view method, string_view target);
+    virtual string_view
+    audience () const noexcept override;
 
-    social_service (const social_service&) = delete;
-    social_service& operator= (const social_service&) = delete;
+    virtual bool
+    match (const request_target&) const override;
+
+    virtual boost::asio::awaitable<service_reply>
+    handle (const caller&,
+            http_method,
+            const request_target&,
+            string_view body) override;
 
   private:
     social_store&         store_;

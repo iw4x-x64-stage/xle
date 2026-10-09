@@ -63,8 +63,10 @@ public:
 //
 // <method> <target> <token>
 //
-// The server accepts the tokens of the form 'user:<xuid>' and rejects any
-// other, and its store fails for user 666. A token of the form '*<n>'
+// The server accepts the tokens of the form 'user:<xuid>' for the social
+// service's audience and rejects any other, prints the callers it lets the
+// observer see to stderr as 'seen user <xuid>', and its store fails for
+// user 666. A token of the form '*<n>'
 // stands for n 'x' characters (to test the size limit).
 //
 // The response is printed as the HTTP status code followed, for the 200
@@ -87,12 +89,23 @@ main (int argc, char* argv[])
   asio::ssl::context ctls (asio::ssl::context::tls_client);
   ctls.set_verify_mode (asio::ssl::verify_none);
 
-  auto verify = [] (string_view t)
+  auto verify = [] (string_view t, string_view a)
   {
     if (!t.starts_with ("user:"))
       throw invalid_argument ("not a test token");
 
-    return xuid {stoull (string (t.substr (5)))};
+    if (a != "https://social.xboxlive.com")
+      throw invalid_argument ("unexpected audience");
+
+    return caller {xuid {stoull (string (t.substr (5)))}, "user"};
+  };
+
+  // Print the callers the server lets the observer see.
+  //
+  auto observe = [] (const caller& c) -> awaitable<void>
+  {
+    println (cerr, "seen user {}", to_underlying (c.user));
+    co_return;
   };
 
   failing_store store;
@@ -122,7 +135,8 @@ main (int argc, char* argv[])
                         tcp::endpoint (asio::ip::address_v4::loopback (), 0),
                         stls,
                         verify,
-                        service);
+                        {service},
+                        observe);
 
   asio::co_spawn (ctx, server.run (), asio::detached);
 
