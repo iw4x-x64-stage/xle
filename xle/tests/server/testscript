@@ -1,0 +1,19 @@
+# Copyright (c) the IW4x authors (see the AUTHORS file).
+# SPDX-License-Identifier: GPL-3.0-only WITH AdditionRef-IW4x-Exception-1.1
+
+: tls
+: Test the TLS certificate and key failures
+:
+{{
+  : certificate
+  :
+  $* --tls-certificate c.pem --tls-key k.pem 2>>~/EOE/ != 0
+  /error: unable to load TLS certificate c.pem: .+/
+  EOE
+
+  : key
+  :
+  $* --tls-certificate $src_base/cert.pem --tls-key k.pem 2>>~/EOE/ != 0
+  /error: unable to load TLS key k.pem: .+/
+  EOE
+}}

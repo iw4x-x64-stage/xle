@@ -54,12 +54,6 @@ EOO
   error: invalid address 'not-an-address'
   EOE
 
-  : certificate
-  :
-  $* --tls-certificate c.pem --tls-key k.pem 2>>~/EOE/ != 0
-  /error: unable to load TLS certificate and key: .+/
-  EOE
-
   : migrate
   :
   $* --migrate 2>>EOE != 0

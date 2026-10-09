@@ -139,18 +139,28 @@ namespace xle
 
     // Load the TLS certificate and key.
     //
+    // Note that here and below we report the error code's message rather
+    // than what(), which also carries the failed function and the source
+    // location.
+    //
     asio::ssl::context tls (asio::ssl::context::tls_server);
     if (!o.migrate ())
     {
-      try
+      boost::system::error_code ec;
+
+      tls.use_certificate_chain_file (o.tls_certificate (), ec);
+      if (ec)
       {
-        tls.use_certificate_chain_file (o.tls_certificate ());
-        tls.use_private_key_file (o.tls_key (), asio::ssl::context::pem);
+        println (cerr, "error: unable to load TLS certificate {}: {}",
+                 o.tls_certificate (), ec.message ());
+        throw failed ();
       }
-      catch (const boost::system::system_error& e)
+
+      tls.use_private_key_file (o.tls_key (), asio::ssl::context::pem, ec);
+      if (ec)
       {
-        println (cerr, "error: unable to load TLS certificate and key: {}",
-                 e.what ());
+        println (cerr, "error: unable to load TLS key {}: {}",
+                 o.tls_key (), ec.message ());
         throw failed ();
       }
     }
@@ -286,7 +296,10 @@ namespace xle
     }
     catch (const boost::system::system_error& e)
     {
-      println (cerr, "error: unable to listen: {}", e.what ());
+      ostringstream os;
+      os << ep;
+      println (cerr, "error: unable to listen on {}: {}",
+               os.str (), e.code ().message ());
       throw failed ();
     }
 
