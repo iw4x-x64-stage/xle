@@ -9,13 +9,16 @@ impl_libs = # Implementation dependencies.
 #
 import intf_libs = libobe%lib{obe}
 
-# The stores and the services are coroutines (Asio awaitables).
+# The stores and the services are coroutines (Asio awaitables) and the
+# server speaks TLS (its header has the Asio TLS context).
 #
 import intf_libs += libboost-asio%lib{boost_asio}
+import intf_libs += libssl%lib{ssl}
 
-# The services reply with JSON.
+# The server speaks HTTP with Beast and the services reply with JSON.
 #
-import impl_libs = libboost-json%lib{boost_json}
+import impl_libs  = libboost-beast%lib{boost_beast}
+import impl_libs += libboost-json%lib{boost_json}
 
 # The PostgreSQL stores use ODB, which is kept out of the public headers.
 #

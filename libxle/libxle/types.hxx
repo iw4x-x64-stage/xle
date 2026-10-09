@@ -15,7 +15,7 @@
 #include <istream>
 #include <ostream>
 #include <optional>
-#include <functional>    // function, reference_wrapper
+#include <functional>    // function, move_only_function, reference_wrapper
 #include <string_view>
 
 #include <ios>           // ios_base::failure
@@ -44,6 +44,7 @@ namespace xle
   using std::string;
   using std::string_view;
   using std::function;
+  using std::move_only_function;
   using std::reference_wrapper;
 
   using std::unique_ptr;
