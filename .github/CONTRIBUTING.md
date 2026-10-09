@@ -42,8 +42,8 @@ The PostgreSQL tests run only if the configuration names a maintenance
 database with `config.libxle.test.pgsql` (see the Development section of
 [README.md](../README.md)). The tests create their own databases, so the
 role they run as needs to be allowed to create databases.
-`etc/private/postgresql/xle-postgresql-setup --test-role <user>` sets up a
-local server this way.
+`xle/etc/private/postgresql/xle-postgresql-setup --test-role <user>` sets
+up a local server this way.
 
 Work on a branch of your fork of the repository and keep it up to date with
 `main` by rebasing it. The history is linear, so a branch with merge commits
