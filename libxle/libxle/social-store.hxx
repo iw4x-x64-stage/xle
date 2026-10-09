@@ -17,19 +17,6 @@ namespace xle
 {
   using boost::asio::awaitable;
 
-  // The store failure (the database is unavailable, etc), which the
-  // services report as a transient server error.
-  //
-  class store_error: public runtime_error
-  {
-  public:
-    template <typename... A>
-      requires formattable_arguments<A...>
-    explicit
-    store_error (std::format_string<A...> f, A&&... a)
-      : runtime_error (std::format (f, std::forward<A> (a)...)) {}
-  };
-
   // The social relationship filter (the view query parameter, see
   // XblSocialRelationshipFilter).
   //
