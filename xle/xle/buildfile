@@ -4,7 +4,8 @@
 import libs = libxle%lib{xle}
 
 ./: exe{xle}: {hxx ixx txx cxx}{** -version -xle-options -pregenerated/**} \
-              {hxx}{version}
+              {hxx}{version}                                               \
+              testscript
 
 hxx{version}: in{version} $src_root/manifest
 

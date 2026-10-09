@@ -1,0 +1,76 @@
+# Copyright (c) the IW4x authors (see the AUTHORS file).
+# SPDX-License-Identifier: GPL-3.0-only WITH AdditionRef-IW4x-Exception-1.1
+
+: help
+:
+$* --help >>~/EOO/
+/.*SYNOPSIS.*/
+/.*/*
+EOO
+
+: version
+:
+$* --version >>~/EOO/
+/xle \d+\.\d+\.\d+.*/
+/libxle \d+\.\d+\.\d+.*/
+/.*/*
+EOO
+
+: pregenerated-current
+: Test that the pregenerated options parser is up to date
+:
+: The development build regenerates it and records the checksum of the
+: options file it is produced from (see buildfile). So this test fails if
+: the options file was changed without a development build.
+:
+sha256sum --sum-only $src_base/xle.cli >>>$src_base/pregenerated/xle/xle.cli.sha256
+
+: options
+: Test the command line errors
+:
+{{
+  : unknown
+  :
+  $* --unknown 2>>EOE != 0
+  error: unknown option '--unknown'
+    info: run 'xle --help' for more information
+  EOE
+
+  : nothing
+  :
+  $* 2>>EOE != 0
+  error: nothing to do
+    info: specify --migrate to create or migrate the database schema
+  EOE
+
+  : migrate
+  :
+  $* --migrate 2>>EOE != 0
+  error: no database specified
+    info: specify it with --db-name
+  EOE
+
+  : verbose
+  :
+  $* --verbose 4 2>>EOE != 0
+  error: invalid --verbose value 4
+    info: specify a level between 0 and 3
+  EOE
+
+  : db-connections
+  :
+  $* --migrate --db-name xle --db-max-connections 0 2>>EOE != 0
+  error: invalid --db-max-connections value 0
+  EOE
+
+  : options-file
+  :
+  cat <<EOI >=opts;
+  # Options file.
+  --unknown
+  EOI
+  $* --options-file opts 2>>EOE != 0
+  error: unknown option '--unknown'
+    info: run 'xle --help' for more information
+  EOE
+}}
