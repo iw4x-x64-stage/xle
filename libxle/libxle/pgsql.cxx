@@ -102,15 +102,14 @@ namespace xle
     {
       using result = std::invoke_result_t<const F&, odb::database&>;
 
+      auto run = [this, f = move (f)] () -> awaitable<result>
+      {
+        co_return perform (f);
+      };
+
       // Note that the completion resumes us on our executor.
       //
-      co_return co_await asio::co_spawn (
-        pool,
-        [this, f = move (f)] () -> awaitable<result>
-        {
-          co_return perform (f);
-        },
-        asio::use_awaitable);
+      co_return co_await asio::co_spawn (pool, move (run), asio::use_awaitable);
     }
 
     template <typename F>
@@ -322,28 +321,28 @@ namespace xle
   {
     co_return co_await database_.transactions_->execute (
       [o, v, start, count] (odb::database& db)
+    {
+      using query = odb::query<relationship_entry>;
+
+      query q (people_query<query> (o, v));
+
+      people_page r;
+      r.total = db.query_value<relationship_count> (
+        people_query<odb::query<relationship_count>> (o, v)).result;
+
+      if (start < r.total && count != 0)
       {
-        using query = odb::query<relationship_entry>;
+        q += "ORDER BY" + query::forward::added + "," +
+             query::forward::id.target +
+             "LIMIT" + query::_val (static_cast<uint64_t> (count)) +
+             "OFFSET" + query::_val (static_cast<uint64_t> (start));
 
-        query q (people_query<query> (o, v));
+        for (const relationship_entry& e: db.query<relationship_entry> (q))
+          r.people.push_back (to_person (e));
+      }
 
-        people_page r;
-        r.total = db.query_value<relationship_count> (
-          people_query<odb::query<relationship_count>> (o, v)).result;
-
-        if (start < r.total && count != 0)
-        {
-          q += "ORDER BY" + query::forward::added + "," +
-               query::forward::id.target +
-               "LIMIT" + query::_val (static_cast<uint64_t> (count)) +
-               "OFFSET" + query::_val (static_cast<uint64_t> (start));
-
-          for (const relationship_entry& e: db.query<relationship_entry> (q))
-            r.people.push_back (to_person (e));
-        }
-
-        return r;
-      });
+      return r;
+    });
   }
 
   awaitable<optional<person>> pgsql_social_store::
@@ -351,19 +350,19 @@ namespace xle
   {
     co_return co_await database_.transactions_->execute (
       [o, u] (odb::database& db) -> optional<person>
-      {
-        using query = odb::query<relationship_entry>;
+    {
+      using query = odb::query<relationship_entry>;
 
-        unique_ptr<relationship_entry> e (
-          db.query_one<relationship_entry> (
-            query::forward::id.owner == to_underlying (o) &&
-            query::forward::id.target == to_underlying (u)));
+      unique_ptr<relationship_entry> e (
+        db.query_one<relationship_entry> (
+          query::forward::id.owner == to_underlying (o) &&
+          query::forward::id.target == to_underlying (u)));
 
-        if (e == nullptr)
-          return nullopt;
+      if (e == nullptr)
+        return nullopt;
 
-        return to_person (*e);
-      });
+      return to_person (*e);
+    });
   }
 
   awaitable<follow_result> pgsql_social_store::
@@ -371,24 +370,24 @@ namespace xle
   {
     co_return co_await database_.transactions_->execute (
       [o, u, now, limit] (odb::database& db)
-      {
-        using count_query = odb::query<relationship_count>;
+    {
+      using count_query = odb::query<relationship_count>;
 
-        const relationship_key k {to_underlying (o), to_underlying (u)};
+      const relationship_key k {to_underlying (o), to_underlying (u)};
 
-        if (db.find<relationship_record> (k) != nullptr)
-          return follow_result::existing;
+      if (db.find<relationship_record> (k) != nullptr)
+        return follow_result::existing;
 
-        const relationship_count c (
-          db.query_value<relationship_count> (
-            count_query::forward::id.owner == to_underlying (o)));
+      const relationship_count c (
+        db.query_value<relationship_count> (
+          count_query::forward::id.owner == to_underlying (o)));
 
-        if (c.result >= limit)
-          return follow_result::full;
+      if (c.result >= limit)
+        return follow_result::full;
 
-        db.persist (relationship_record {k, false, to_nanoseconds (now)});
-        return follow_result::added;
-      });
+      db.persist (relationship_record {k, false, to_nanoseconds (now)});
+      return follow_result::added;
+    });
   }
 
   awaitable<bool> pgsql_social_store::
@@ -396,13 +395,13 @@ namespace xle
   {
     co_return co_await database_.transactions_->execute (
       [o, u] (odb::database& db)
-      {
-        using query = odb::query<relationship_record>;
+    {
+      using query = odb::query<relationship_record>;
 
-        return db.erase_query<relationship_record> (
-          query::id.owner == to_underlying (o) &&
-          query::id.target == to_underlying (u)) != 0;
-      });
+      return db.erase_query<relationship_record> (
+        query::id.owner == to_underlying (o) &&
+        query::id.target == to_underlying (u)) != 0;
+    });
   }
 
   awaitable<bool> pgsql_social_store::
@@ -410,17 +409,17 @@ namespace xle
   {
     co_return co_await database_.transactions_->execute (
       [o, u, f] (odb::database& db)
-      {
-        unique_ptr<relationship_record> r (
-          db.find<relationship_record> (
-            relationship_key {to_underlying (o), to_underlying (u)}));
+    {
+      unique_ptr<relationship_record> r (
+        db.find<relationship_record> (
+          relationship_key {to_underlying (o), to_underlying (u)}));
 
-        if (r == nullptr)
-          return false;
+      if (r == nullptr)
+        return false;
 
-        r->favorite = f;
-        db.update (*r);
-        return true;
-      });
+      r->favorite = f;
+      db.update (*r);
+      return true;
+    });
   }
 }
