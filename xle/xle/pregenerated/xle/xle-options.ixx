@@ -336,6 +336,60 @@ namespace xle
   }
 
   inline const std::string& options::
+  address () const
+  {
+    return this->address_;
+  }
+
+  inline bool options::
+  address_specified () const
+  {
+    return this->address_specified_;
+  }
+
+  inline const std::uint16_t& options::
+  port () const
+  {
+    return this->port_;
+  }
+
+  inline bool options::
+  port_specified () const
+  {
+    return this->port_specified_;
+  }
+
+  inline const std::string& options::
+  tls_certificate () const
+  {
+    return this->tls_certificate_;
+  }
+
+  inline bool options::
+  tls_certificate_specified () const
+  {
+    return this->tls_certificate_specified_;
+  }
+
+  inline const std::string& options::
+  tls_key () const
+  {
+    return this->tls_key_;
+  }
+
+  inline bool options::
+  tls_key_specified () const
+  {
+    return this->tls_key_specified_;
+  }
+
+  inline const bool& options::
+  print_endpoint () const
+  {
+    return this->print_endpoint_;
+  }
+
+  inline const std::string& options::
   db_name () const
   {
     return this->db_name_;

@@ -770,6 +770,15 @@ namespace xle
     quiet_ (),
     verbose_ (1),
     verbose_specified_ (false),
+    address_ ("0.0.0.0"),
+    address_specified_ (false),
+    port_ (443),
+    port_specified_ (false),
+    tls_certificate_ (),
+    tls_certificate_specified_ (false),
+    tls_key_ (),
+    tls_key_specified_ (false),
+    print_endpoint_ (),
     db_name_ (),
     db_name_specified_ (false),
     db_user_ (),
@@ -895,7 +904,31 @@ namespace xle
        << "                                messages." << ::std::endl;
 
     os << std::endl
-       << "\033[1m--db-name\033[0m \033[4mname\033[0m                  The PostgreSQL database \033[4mname\033[0m. Required." << ::std::endl;
+       << "\033[1m--address\033[0m \033[4maddr\033[0m                  Listen for the requests on \033[4maddr\033[0m. The default is" << ::std::endl
+       << "                                all IPv4 interfaces." << ::std::endl;
+
+    os << std::endl
+       << "\033[1m--port\033[0m \033[4mport\033[0m                     Listen for the requests on \033[4mport\033[0m. The default is" << ::std::endl
+       << "                                443. If \033[4mport\033[0m is 0, then the system chooses a" << ::std::endl
+       << "                                free port (see \033[1m--print-endpoint\033[0m)." << ::std::endl;
+
+    os << std::endl
+       << "\033[1m--tls-certificate\033[0m \033[4mfile\033[0m          The server certificate chain in the PEM format." << ::std::endl
+       << "                                Required unless migrating." << ::std::endl;
+
+    os << std::endl
+       << "\033[1m--tls-key\033[0m \033[4mfile\033[0m                  The server private key in the PEM format." << ::std::endl
+       << "                                Required unless migrating." << ::std::endl;
+
+    os << std::endl
+       << "\033[1m--print-endpoint\033[0m                Print the endpoint to \033[1mstdout\033[0m once listening." << ::std::endl
+       << "                                This is primarily useful together with port 0," << ::std::endl
+       << "                                which makes the system choose a free port." << ::std::endl;
+
+    os << std::endl
+       << "\033[1m--db-name\033[0m \033[4mname\033[0m                  The PostgreSQL database \033[4mname\033[0m. Required. The" << ::std::endl
+       << "                                database schema must be created or migrated" << ::std::endl
+       << "                                with \033[1m--migrate\033[0m beforehand." << ::std::endl;
 
     os << std::endl
        << "\033[1m--db-user\033[0m \033[4muser\033[0m                  The PostgreSQL database user. If unspecified," << ::std::endl
@@ -976,6 +1009,20 @@ namespace xle
       _cli_options_map_["--verbose"] =
       &::xle::cli::thunk< options, std::uint16_t, &options::verbose_,
         &options::verbose_specified_ >;
+      _cli_options_map_["--address"] =
+      &::xle::cli::thunk< options, std::string, &options::address_,
+        &options::address_specified_ >;
+      _cli_options_map_["--port"] =
+      &::xle::cli::thunk< options, std::uint16_t, &options::port_,
+        &options::port_specified_ >;
+      _cli_options_map_["--tls-certificate"] =
+      &::xle::cli::thunk< options, std::string, &options::tls_certificate_,
+        &options::tls_certificate_specified_ >;
+      _cli_options_map_["--tls-key"] =
+      &::xle::cli::thunk< options, std::string, &options::tls_key_,
+        &options::tls_key_specified_ >;
+      _cli_options_map_["--print-endpoint"] =
+      &::xle::cli::thunk< options, &options::print_endpoint_ >;
       _cli_options_map_["--db-name"] =
       &::xle::cli::thunk< options, std::string, &options::db_name_,
         &options::db_name_specified_ >;
@@ -1204,10 +1251,12 @@ namespace xle
        << "\033[1mxle\033[0m serves the Xbox Live social services that IW4x connects to: the social" << ::std::endl
        << "relationships (friends and followers), presence, multiplayer activities and" << ::std::endl
        << "invites, privacy, and the real-time activity notifications. It keeps its state" << ::std::endl
-       << "in a PostgreSQL database." << ::std::endl
+       << "in a PostgreSQL database and runs until interrupted (\033[1mSIGINT\033[0m or \033[1mSIGTERM\033[0m)." << ::std::endl
        << ::std::endl
-       << "Currently \033[1mxle\033[0m only creates and migrates the database schema (see \033[1m--migrate\033[0m);" << ::std::endl
-       << "the services are served by later versions." << ::std::endl;
+       << "Currently \033[1mxle\033[0m serves the social relationships (the people lists) over HTTPS. It" << ::std::endl
+       << "accepts the Xbox Live style platform tokens that IW4x issues for" << ::std::endl
+       << "\033[1mhttps://social.xboxlive.com\033[0m, the same tokens that \033[1mobe\033[0m accepts for its own" << ::std::endl
+       << "address." << ::std::endl;
 
     p = ::xle::options::print_usage (os, ::xle::cli::usage_para::text);
 

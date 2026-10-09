@@ -3,13 +3,25 @@
 
 #include <print>
 #include <string>
+#include <cstdio>    // fflush(), stdout
 #include <cstdint>
+#include <csignal>   // SIGINT, SIGTERM
 #include <sstream>
 #include <iostream>
 #include <exception>
 
+#include <boost/asio/co_spawn.hpp>
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/signal_set.hpp>
+#include <boost/asio/ssl/context.hpp>
+
+#include <libobe/authenticator-xbl.hxx>
+
 #include <libxle/version.hxx>
 #include <libxle/pgsql.hxx>
+#include <libxle/social-store.hxx>
+#include <libxle/social-server.hxx>
+#include <libxle/social-service.hxx>
 
 #include <xle/version.hxx>
 #include <xle/xle-options.hxx>
@@ -18,12 +30,35 @@ using namespace std;
 
 namespace xle
 {
+  namespace asio = boost::asio;
+
+  using asio::ip::tcp;
+
+  // The audience of the tokens the clients present: the origin of the
+  // social service, which they request the tokens for.
+  //
+  static const char social_audience[] = "https://social.xboxlive.com";
+
   namespace
   {
     // Thrown to terminate the process once the diagnostics has been issued.
     //
     class failed: public std::exception {};
   }
+
+  // The io_context that can destroy its pending handlers (the suspended
+  // coroutines) before it is destroyed itself.
+  //
+  // The handlers refer to the server and the service, which in turn have
+  // the sockets and timers of the io_context. So we destroy the handlers
+  // first, then the server and the service, and the io_context last (see
+  // main()).
+  //
+  class context: public asio::io_context
+  {
+  public:
+    using io_context::shutdown;
+  };
 
   // The diagnostics verbosity (see --verbose).
   //
@@ -80,16 +115,49 @@ namespace xle
            o.v ()     ? 2 :
            o.verbose ();
 
-    // Figure out what to do. For now the only operation is the database
-    // schema migration since there are no services to serve yet.
+    // Verify the server configuration, unless migrating, before going any
+    // further.
     //
-    if (!o.migrate ())
+    if (!o.migrate () &&
+        (!o.tls_certificate_specified () || !o.tls_key_specified ()))
     {
       println (cerr,
-               "error: nothing to do\n"
-               "  info: specify --migrate to create or migrate the database "
-               "schema");
+               "error: TLS certificate and key are required\n"
+               "  info: specify them with --tls-certificate and --tls-key");
       throw failed ();
+    }
+
+    tcp::endpoint ep;
+    if (!o.migrate ())
+    {
+      boost::system::error_code ec;
+      const asio::ip::address a (asio::ip::make_address (o.address (), ec));
+
+      if (ec)
+      {
+        println (cerr, "error: invalid address '{}'", o.address ());
+        throw failed ();
+      }
+
+      ep = tcp::endpoint (a, o.port ());
+    }
+
+    // Load the TLS certificate and key.
+    //
+    asio::ssl::context tls (asio::ssl::context::tls_server);
+    if (!o.migrate ())
+    {
+      try
+      {
+        tls.use_certificate_chain_file (o.tls_certificate ());
+        tls.use_private_key_file (o.tls_key (), asio::ssl::context::pem);
+      }
+      catch (const boost::system::system_error& e)
+      {
+        println (cerr, "error: unable to load TLS certificate and key: {}",
+                 e.what ());
+        throw failed ();
+      }
     }
 
     // Open the database.
@@ -122,35 +190,169 @@ namespace xle
 
     pgsql_database db (s);
 
-    // Migrate the database schema.
+    // If requested, migrate the database schema and exit. Otherwise, make
+    // sure the schema is current: the server of one version should not touch
+    // the schema of another.
     //
     const string& n (o.db_name ());
     const uint64_t cv (db.current_schema_version ());
 
-    uint64_t v;
+    if (o.migrate ())
+    {
+      uint64_t v;
+      try
+      {
+        v = db.migrate ();
+      }
+      catch (const database_error& e)
+      {
+        println (cerr, "error: unable to migrate database {}: {}",
+                 n, e.what ());
+        throw failed ();
+      }
+
+      if (verb >= 2)
+      {
+        if (v == 0)
+          println (cerr, "created database {} schema version {}", n, cv);
+        else if (v != cv)
+          println (cerr,
+                   "migrated database {} schema from version {} to {}",
+                   n, v, cv);
+        else
+          println (cerr, "database {} schema version {} is current", n, cv);
+      }
+
+      return 0;
+    }
+
+    {
+      uint64_t v;
+      try
+      {
+        v = db.schema_version ();
+      }
+      catch (const database_error& e)
+      {
+        println (cerr, "error: unable to access database {}: {}",
+                 n, e.what ());
+        throw failed ();
+      }
+
+      if (v != cv)
+      {
+        if (v == 0)
+          println (cerr, "error: database {} has no schema", n);
+        else
+          println (cerr,
+                   "error: database {} schema version {} instead of {}",
+                   n, v, cv);
+
+        println (cerr, "  info: run 'xle --migrate' to create or migrate it");
+        throw failed ();
+      }
+    }
+
+    // Verify the Xbox Live style tokens that IW4x issues for the social
+    // service (see obe::verify_xbl_token() for their form).
+    //
+    obe::xbl_settings xs;
+    xs.audience = social_audience;
+
+    auto verify = [xs = move (xs)] (string_view t)
+    {
+      const obe::auth_identity id (
+        obe::verify_xbl_token (t, system_clock::now (), xs));
+
+      return xuid {to_underlying (id.user)};
+    };
+
+    // Create the io_context. Note that it must outlive the server and the
+    // service (see context for details).
+    //
+    context ctx;
+
+    pgsql_social_store store (db);
+    social_service service (store);
+
+    // Start the server.
+    //
+    optional<social_server> server;
     try
     {
-      v = db.migrate ();
+      server.emplace (ctx.get_executor (), ep, tls, move (verify), service);
     }
-    catch (const database_error& e)
+    catch (const boost::system::system_error& e)
     {
-      println (cerr, "error: unable to migrate database {}: {}", n, e.what ());
+      println (cerr, "error: unable to listen: {}", e.what ());
       throw failed ();
     }
 
     if (verb >= 2)
     {
-      if (v == 0)
-        println (cerr, "created database {} schema version {}", n, cv);
-      else if (v != cv)
-        println (cerr,
-                 "migrated database {} schema from version {} to {}",
-                 n, v, cv);
-      else
-        println (cerr, "database {} schema version {} is current", n, cv);
+      ostringstream os;
+      os << server->endpoint ();
+      println (cerr, "listening on {}", os.str ());
     }
 
-    return 0;
+    // Flush so that whoever reads the endpoint gets it right away.
+    //
+    if (o.print_endpoint ())
+    {
+      ostringstream os;
+      os << server->endpoint ();
+      println ("{}", os.str ());
+      fflush (stdout);
+    }
+
+    // Serve until the server fails or a termination signal arrives.
+    //
+    int r (0);
+    {
+      asio::co_spawn (ctx, server->run (), [&ctx, &r] (exception_ptr e)
+      {
+        if (e == nullptr)
+          return;
+
+        try
+        {
+          rethrow_exception (e);
+        }
+        catch (const std::exception& x)
+        {
+          println (cerr, "error: server failed: {}", x.what ());
+        }
+
+        r = 1;
+        ctx.stop ();
+      });
+
+      asio::signal_set ss (ctx, SIGINT, SIGTERM);
+      ss.async_wait ([&ctx] (const boost::system::error_code& ec, int)
+      {
+        if (ec)
+          return;
+
+        if (verb >= 2)
+          println (cerr, "shutting down");
+
+        ctx.stop ();
+      });
+
+      ctx.run ();
+    }
+
+    // Shut down.
+    //
+    // First wait for the database operations in progress since their
+    // completions are posted to the io_context. Then destroy the pending
+    // handlers and with them the coroutines of the connections that are
+    // still open, which refer to the server and the service.
+    //
+    db.join ();
+    ctx.shutdown ();
+
+    return r;
   }
   catch (const failed&)
   {

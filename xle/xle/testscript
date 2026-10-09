@@ -36,11 +36,24 @@ sha256sum --sum-only $src_base/xle.cli >>>$src_base/pregenerated/xle/xle.cli.sha
     info: run 'xle --help' for more information
   EOE
 
-  : nothing
+  : tls
   :
   $* 2>>EOE != 0
-  error: nothing to do
-    info: specify --migrate to create or migrate the database schema
+  error: TLS certificate and key are required
+    info: specify them with --tls-certificate and --tls-key
+  EOE
+
+  : address
+  :
+  $* --tls-certificate c.pem --tls-key k.pem --address 'not-an-address' \
+     2>>EOE != 0
+  error: invalid address 'not-an-address'
+  EOE
+
+  : certificate
+  :
+  $* --tls-certificate c.pem --tls-key k.pem 2>>~/EOE/ != 0
+  /error: unable to load TLS certificate and key: .+/
   EOE
 
   : migrate

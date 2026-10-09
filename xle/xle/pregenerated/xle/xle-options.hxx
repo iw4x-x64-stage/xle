@@ -509,6 +509,33 @@ namespace xle
     verbose_specified () const;
 
     const std::string&
+    address () const;
+
+    bool
+    address_specified () const;
+
+    const std::uint16_t&
+    port () const;
+
+    bool
+    port_specified () const;
+
+    const std::string&
+    tls_certificate () const;
+
+    bool
+    tls_certificate_specified () const;
+
+    const std::string&
+    tls_key () const;
+
+    bool
+    tls_key_specified () const;
+
+    const bool&
+    print_endpoint () const;
+
+    const std::string&
     db_name () const;
 
     bool
@@ -581,6 +608,15 @@ namespace xle
     bool quiet_;
     std::uint16_t verbose_;
     bool verbose_specified_;
+    std::string address_;
+    bool address_specified_;
+    std::uint16_t port_;
+    bool port_specified_;
+    std::string tls_certificate_;
+    bool tls_certificate_specified_;
+    std::string tls_key_;
+    bool tls_key_specified_;
+    bool print_endpoint_;
     std::string db_name_;
     bool db_name_specified_;
     std::string db_user_;

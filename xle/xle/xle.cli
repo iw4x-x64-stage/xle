@@ -8,7 +8,8 @@ include <cstdint>;
 namespace xle
 {
   {
-    "<options> <file> <level> <name> <user> <pass> <host> <port> <num>",
+    "<options> <file> <addr> <port> <level> <name> <user> <pass> <host>
+     <num>",
 
     "\h|SYNOPSIS|
 
@@ -19,10 +20,13 @@ namespace xle
      \cb{xle} serves the Xbox Live social services that IW4x connects to:
      the social relationships (friends and followers), presence,
      multiplayer activities and invites, privacy, and the real-time
-     activity notifications. It keeps its state in a PostgreSQL database.
+     activity notifications. It keeps its state in a PostgreSQL database
+     and runs until interrupted (\cb{SIGINT} or \cb{SIGTERM}).
 
-     Currently \cb{xle} only creates and migrates the database schema (see
-     \cb{--migrate}); the services are served by later versions."
+     Currently \cb{xle} serves the social relationships (the people lists)
+     over HTTPS. It accepts the Xbox Live style platform tokens that IW4x
+     issues for \cb{https://social.xboxlive.com}, the same tokens that
+     \cb{obe} accepts for its own address."
   }
 
   class options
@@ -65,10 +69,45 @@ namespace xle
        informational messages, and level 3 also trace messages."
     }
 
+    std::string --address = "0.0.0.0"
+    {
+      "<addr>",
+      "Listen for the requests on <addr>. The default is all IPv4
+       interfaces."
+    }
+
+    std::uint16_t --port = 443
+    {
+      "<port>",
+      "Listen for the requests on <port>. The default is 443. If <port> is
+       0, then the system chooses a free port (see \cb{--print-endpoint})."
+    }
+
+    std::string --tls-certificate
+    {
+      "<file>",
+      "The server certificate chain in the PEM format. Required unless
+       migrating."
+    }
+
+    std::string --tls-key
+    {
+      "<file>",
+      "The server private key in the PEM format. Required unless migrating."
+    }
+
+    bool --print-endpoint
+    {
+      "Print the endpoint to \cb{stdout} once listening. This is primarily
+       useful together with port 0, which makes the system choose a free
+       port."
+    }
+
     std::string --db-name
     {
       "<name>",
-      "The PostgreSQL database <name>. Required."
+      "The PostgreSQL database <name>. Required. The database schema must be
+       created or migrated with \cb{--migrate} beforehand."
     }
 
     std::string --db-user
