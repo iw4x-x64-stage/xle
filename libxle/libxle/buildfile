@@ -101,10 +101,13 @@ if $develop
 
   # Note that we pass the ODB runtime's (but not our) preprocessor options
   # since the persistent classes header is compiled as is. Since they may
-  # change, they are hashed into the dependency database.
+  # change, they are hashed into the dependency database. Note also that the
+  # schema name must match the one the database code uses (see schema_name
+  # in pgsql.cxx).
   #
   options = --std c++26 --database pgsql --generate-query \
             --generate-schema --schema-format embedded    \
+            --schema-name xle                             \
             --sql-name-case lower --include-with-brackets \
             --include-prefix libxle --guard-prefix LIBXLE \
             --changelog-dir $src_base --output-dir $d     \

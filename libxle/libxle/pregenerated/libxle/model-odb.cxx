@@ -1265,7 +1265,7 @@ namespace odb
                       "  \"version\" BIGINT NOT NULL,\n"
                       "  \"migration\" BOOLEAN NOT NULL)");
           db.execute ("DELETE FROM \"schema_version\"\n"
-                      "  WHERE \"name\" = ''");
+                      "  WHERE \"name\" = 'xle'");
           return false;
         }
       }
@@ -1295,9 +1295,9 @@ namespace odb
                       "  \"migration\" BOOLEAN NOT NULL)");
           db.execute ("INSERT INTO \"schema_version\" (\n"
                       "  \"name\", \"version\", \"migration\")\n"
-                      "  SELECT '', 1, FALSE\n"
+                      "  SELECT 'xle', 1, FALSE\n"
                       "  WHERE NOT EXISTS (\n"
-                      "    SELECT 1 FROM \"schema_version\" WHERE \"name\" = '')");
+                      "    SELECT 1 FROM \"schema_version\" WHERE \"name\" = 'xle')");
           return false;
         }
       }
@@ -1309,13 +1309,13 @@ namespace odb
   static const schema_catalog_create_entry
   create_schema_entry_ (
     id_pgsql,
-    "",
+    "xle",
     &create_schema);
 
   static const schema_catalog_migrate_entry
   migrate_schema_entry_1_ (
     id_pgsql,
-    "",
+    "xle",
     1ULL,
     0);
 }

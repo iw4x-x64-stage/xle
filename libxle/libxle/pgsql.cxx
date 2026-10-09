@@ -28,6 +28,16 @@ namespace xle
 {
   namespace asio = boost::asio;
 
+  // The name of our schema in the ODB schema catalog and the schema version
+  // table (see --schema-name in buildfile).
+  //
+  // Note that the catalog is process-wide and also has the schemas of the
+  // libraries we link (libobe has the default, empty-named one). So every
+  // catalog and version operation must name our schema or it would also
+  // create the other schemas' tables and share their version.
+  //
+  static const string schema_name ("xle");
+
   // The advisory lock key that serializes the schema migrations (the ASCII
   // codes of "xle").
   //
@@ -175,7 +185,7 @@ namespace xle
   schema_version ()
   try
   {
-    return transactions_->database.schema_version ();
+    return transactions_->database.schema_version (schema_name);
   }
   catch (const odb::exception& e)
   {
@@ -185,8 +195,8 @@ namespace xle
   uint64_t pgsql_database::
   current_schema_version () const
   {
-    return odb::schema_catalog::current_version (
-      transactions_->database);
+    return odb::schema_catalog::current_version (transactions_->database,
+                                                 schema_name);
   }
 
   uint64_t pgsql_database::
@@ -229,12 +239,13 @@ namespace xle
     //
     odb::transaction t (c->begin ());
 
-    const uint64_t v (db.schema_version ());
-    const uint64_t cv (odb::schema_catalog::current_version (db));
+    const uint64_t v (db.schema_version (schema_name));
+    const uint64_t cv (
+      odb::schema_catalog::current_version (db, schema_name));
 
     if (v != 0)
     {
-      if (v < odb::schema_catalog::base_version (db))
+      if (v < odb::schema_catalog::base_version (db, schema_name))
         throw database_error (
           "database schema version {} is too old to migrate", v);
 
@@ -244,9 +255,11 @@ namespace xle
     }
 
     if (v == 0)
-      odb::schema_catalog::create_schema (db, "", false /* drop */);
+      odb::schema_catalog::create_schema (db,
+                                          schema_name,
+                                          false /* drop */);
     else if (v != cv)
-      odb::schema_catalog::migrate (db);
+      odb::schema_catalog::migrate (db, 0 /* current */, schema_name);
 
     t.commit ();
     return v;
