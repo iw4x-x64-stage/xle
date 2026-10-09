@@ -25,7 +25,8 @@ explains the workflow.
 The repository holds two packages: `libxle`, the services library, and
 `xle`, the server executable. The library sources are in `libxle/libxle/`
 and their tests in `libxle/tests/`, while the executable's tests are in the
-testscript next to its sources in `xle/xle/`.
+testscript next to its sources in `xle/xle/`. The `xle`
+manual is in `xle/doc/manual.cli`.
 
 Some code is generated: the database support from `libxle/libxle/model.hxx`
 by [ODB](https://codesynthesis.com/products/odb/) and the command line
@@ -36,7 +37,9 @@ tools. The configurations that `bdep` initializes are development builds
 (`config.libxle.develop` and `config.xle.develop` are true), which
 regenerate it, so a change to either file is committed together with the
 regenerated code. A change to the database model also updates the schema
-changelog, `libxle/libxle/model.xml`, which is committed as well.
+changelog, `libxle/libxle/model.xml`, which is committed too. The
+development build also generates the manual from `manual.cli`, and only
+the distribution carries the generated manual.
 
 The PostgreSQL tests run only if the configuration names a maintenance
 database with `config.libxle.test.pgsql` (see the Development section of

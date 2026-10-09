@@ -1,0 +1,426 @@
+// Copyright (c) the IW4x authors (see the AUTHORS file).
+// SPDX-License-Identifier: GPL-3.0-only WITH AdditionRef-IW4x-Exception-1.1
+
+"\name=xle-manual"
+"\title=Manual"
+
+// NOTES
+//
+// - Maximum <pre> line is 70 characters.
+//
+
+"
+\h0#preface|Preface|
+
+This document describes how to deploy \c{xle}, IW4x Xbox Live social
+services server, and how to keep its database current across \c{xle}
+upgrades. For the command line interface run \c{xle\ --help}.
+
+\h1#intro|Introduction|
+
+The game uses the Xbox Live social services to find the players it shows in
+its friends list and to tell them about each other's games. \c{xle} keeps
+the state of these services, starting with the social relationships, in a
+PostgreSQL database.
+
+The current version of \c{xle} prepares this database: with \c{--migrate} it
+creates the database schema or migrates it to the current version and exits.
+The services themselves arrive in the later versions, and this document
+describes their deployment as they do.
+
+The examples in this document assume a Fedora or Debian-based Linux system
+and use the following locations:
+
+\
+/opt/xle/                       installation
+/etc/xle/xle.options            options file
+/var/lib/xle/                   home of the xle user
+\
+
+You can use other locations, as long as you adjust the commands accordingly.
+
+\h1#install|Installation|
+
+Before we begin, make sure the following is available on the host:
+
+\ul|
+
+\li|GCC 16 or later, since \c{xle} is written in C++26.|
+
+\li|The \c{build2} toolchain 0.18.0 or later (see the
+\l{https://build2.org/install.xhtml Installation Instructions}).|
+
+\li|An account with \c{sudo} access.||
+
+The remaining dependencies are \c{build2} packages and are built from source
+along with \c{xle}.
+
+We also need a copy of the \c{xle} repository for its setup script:
+
+\
+$ git clone https://github.com/iw4x-x64-stage/xle.git
+\
+
+\dl|
+
+\li|\b{1. Set Up PostgreSQL}\n
+
+The \c{xle/etc/private/postgresql/xle-postgresql-setup} script installs and
+starts the PostgreSQL server from the distribution's packages and creates the
+\c{xle} database owned by the \c{xle} role:
+
+\
+$ xle/xle/etc/private/postgresql/xle-postgresql-setup
+set up PostgreSQL database 'xle' owned by role 'xle'? [y/n]: y
++ sudo dnf install --assumeyes postgresql-server
+...
++ psql: CREATE ROLE xle LOGIN
++ psql: CREATE DATABASE xle OWNER xle TEMPLATE template0 ...
+database 'xle' is ready
+  info: run 'xle --db-name xle --migrate' as user 'xle' to create
+  its schema
+\
+
+The \c{xle} role authenticates with the \c{peer} method, which is the
+PostgreSQL default for the local UNIX-domain socket: the system user that
+runs \c{xle} has the name of the role and needs no password.
+
+The script skips the steps that are already done, so it is safe to run it
+again. It can also print its plan without doing anything (\c{--print-only})
+and use other names (\c{--database} and \c{--role}). See the comments at the
+beginning of the script for details.
+
+\N|On other distributions we install and start the PostgreSQL server with the
+distribution's tools and then execute the following statements as the
+PostgreSQL superuser:
+
+\
+CREATE ROLE xle LOGIN;
+CREATE DATABASE xle OWNER xle TEMPLATE template0 ENCODING 'UTF8';
+\
+
+|
+
+|
+
+\li|\n\b{2. Build and Install}\n
+
+We build \c{xle} in a \c{bpkg} build configuration. You will want to keep
+this configuration around since it is also what we upgrade \c{xle} with (see
+\l{#upgrade Upgrading}). In this guide we use \c{~/xle-build/} as the
+configuration directory:
+
+\
+$ bpkg create -d ~/xle-build cc     \
+  config.cxx=g++                    \
+  config.cc.coptions=-O2            \
+  config.bin.rpath=/opt/xle/lib     \
+  config.install.root=/opt/xle      \
+  config.install.sudo=sudo
+
+$ cd ~/xle-build
+$ bpkg build xle@https://github.com/iw4x-x64-stage/xle.git#main
+$ bpkg install --all --recursive
+\
+
+The \c{config.bin.rpath} value embeds the library directory into the
+executable so that it finds the shared libraries installed next to it, and
+\c{--recursive} installs these libraries along with \c{xle}. Let's make sure
+the result runs:
+
+\
+$ /opt/xle/bin/xle --version
+xle 0.1.0
+libxle 0.1.0
+...
+\
+
+|
+
+\li|\n\b{3. Create System User}\n
+
+\c{xle} runs as an unprivileged system user with the name of its database
+role:
+
+\
+$ sudo useradd --system --user-group --create-home \
+  --home-dir /var/lib/xle --shell /usr/sbin/nologin xle
+\
+
+|
+
+\li|\n\b{4. Write Options File}\n
+
+\c{xle} reads its options from the file that we pass with
+\c{--options-file}. Each option is on its own line, optionally followed by a
+space or an equal sign and the value, and the lines starting with \c{#} are
+comments. Let's create \c{/etc/xle/xle.options} with the following contents:
+
+\
+# The xle options (see xle --help for details).
+#
+--db-name xle
+\
+
+The file is readable by \c{root} and the \c{xle} group only, since it holds
+the database password once the database is on another host (see
+\l{#operation-remote Remote Database}):
+
+\
+$ sudo chown root:xle /etc/xle/xle.options
+$ sudo chmod 640 /etc/xle/xle.options
+\
+
+|
+
+\li|\n\b{5. Create Database Schema}\n
+
+\c{xle} creates its database schema when run with \c{--migrate}, which we do
+as the \c{xle} user:
+
+\
+$ sudo -u xle /opt/xle/bin/xle \
+  --options-file /etc/xle/xle.options --migrate -v
+created database xle schema version 1
+\
+
+The same command migrates the schema after an upgrade (see
+\l{#upgrade-schema Migrating Database Schema}).||
+
+\h1#operation|Operation|
+
+\h#operation-diagnostics|Diagnostics|
+
+\c{xle} writes its diagnostics to \c{stderr}. The \c{--verbose} option sets
+the verbosity from 0 to 3. Level 0 prints the errors, and each next level
+adds a kind of message: warnings at 1 (the default), informational messages
+at 2, and trace messages at 3. The \c{-q}, \c{-v}, and \c{-V} options are the
+shortcuts for levels 0, 2, and 3.
+
+An error names the database and the reason that PostgreSQL gives. For
+example, this is what we get while the server is down:
+
+\
+error: unable to migrate database xle: database error: connection to
+server on socket \"/run/postgresql/.s.PGSQL.5432\" failed: No such
+file or directory
+\
+
+\h#operation-database|Database|
+
+\c{xle} opens up to \c{--db-max-connections} connections (5 by default) and
+performs the database operations on as many threads. Every operation runs in
+a serializable transaction. Together with the other clients of the server,
+the connections have to fit into the server's \c{max_connections} (100 by
+default).
+
+PostgreSQL vacuums and analyzes the tables on its own (autovacuum is enabled
+by default), so the database needs no regular maintenance besides the backups.
+
+\h#operation-backup|Backups|
+
+The \c{xle} role owns the database and so can dump it. We use the custom
+format, which is compressed and which \c{pg_restore} can restore selectively:
+
+\
+$ sudo -u xle pg_dump --format=custom \
+  --file=/var/lib/xle/xle-$(date +%F).dump xle
+\
+
+To make a backup every night, we can add a line to the \c{xle} user's
+\c{crontab} (\c{sudo\ crontab\ -u\ xle\ -e}), escaping the percent sign as
+\c{cron} requires:
+
+\
+0 4 * * * pg_dump -Fc -f /var/lib/xle/xle-$(date +\%F).dump xle
+\
+
+\N|These backups are on the same host as the database, so make sure they are
+also copied to another one.|
+
+To restore a backup, we drop the database, let the setup script create an
+empty one, and restore the backup into it:
+
+\
+$ sudo -u postgres dropdb xle
+$ xle/xle/etc/private/postgresql/xle-postgresql-setup --yes
+$ sudo -u xle pg_restore --dbname=xle \
+  /var/lib/xle/xle-2026-10-09.dump
+\
+
+The backup includes the schema version. If an older \c{xle} made it, then we
+migrate the restored schema (see \l{#upgrade-schema Migrating Database
+Schema}).
+
+\h#operation-remote|Remote Database|
+
+The setup script configures a local server. To use a server on another host,
+we give the role a password and allow it to connect over the network:
+
+\
+ALTER ROLE xle PASSWORD '...';
+\
+
+The server's \c{pg_hba.conf} then needs a line like this one, with the
+network of the \c{xle} host:
+
+\
+host  xle  xle  192.0.2.0/24  scram-sha-256
+\
+
+And the options file names the server and the credentials:
+
+\
+--db-host     db.example.org
+--db-port     5432
+--db-user     xle
+--db-password ...
+\
+
+\N|The command line of a process is visible to the other users of the host.
+The password belongs in the options file, which only \c{root} and the
+\c{xle} group can read, or in the PostgreSQL password file (see
+\c{PGPASSFILE} in the PostgreSQL documentation).|
+
+\h1#upgrade|Upgrading|
+
+At this point we assume that \c{xle} is installed as described in
+\l{#install Installation} and that the \c{bpkg} configuration from step 2 is
+in \c{~/xle-build/}.
+
+We first fetch the new version and see what we are upgrading to:
+
+\
+$ cd ~/xle-build
+$ bpkg fetch
+$ bpkg status xle
+!xle configured 0.1.0 available 0.2.0
+\
+
+If the new version changes the database schema, then the upgrade also
+migrates it, and we want a fresh backup before that (see
+\l{#operation-backup Backups}).
+
+We uninstall the old version before installing the new one, so that the
+files the new version no longer has don't remain installed:
+
+\
+$ bpkg uninstall --all --recursive
+$ bpkg build --upgrade --recursive xle
+$ bpkg install --all --recursive
+$ sudo -u xle /opt/xle/bin/xle \
+  --options-file /etc/xle/xle.options --migrate -v
+migrated database xle schema from version 1 to 2
+\
+
+\N|The \c{--recursive} option makes \c{bpkg} upgrade and install the
+dependencies of \c{xle} as well. See
+\l{https://build2.org/bpkg/doc/bpkg-pkg-build.xhtml \c{bpkg-pkg-build(1)}}
+for details.|
+
+\h#upgrade-schema|Migrating Database Schema|
+
+The database records the version of its schema and each \c{xle} version uses
+one schema version. \c{xle} can migrate the schemas from a range of earlier
+versions to its own. With \c{--migrate} it does what the database needs and
+with \c{-v} it reports what it did:
+
+\
+created database xle schema version 2
+migrated database xle schema from version 1 to 2
+database xle schema version 2 is current
+\
+
+The migration runs in a single transaction, so a failed migration leaves the
+database as it was. If several hosts run \c{--migrate} at once, then the
+migrations happen one after another and all but the first find the schema
+current.
+
+\c{xle} fails without changing anything if the schema is outside its range:
+
+\
+error: unable to migrate database xle: database schema version 1
+is too old to migrate
+error: unable to migrate database xle: database schema version 3
+is newer than 2
+\
+
+An old schema is migrated in steps, first with an intermediate \c{xle}
+version that still supports it. The release notes (the \c{NEWS} file) say
+when a version drops the support for a schema. A newer schema means the
+database belongs to a newer \c{xle}. To go back to an earlier \c{xle}, we
+reinstall it and restore the backup made before the migration, which loses
+the changes made since.
+
+\h1#develop|Development|
+
+This chapter is for the \c{xle} developers and assumes the development setup
+from the repository's \c{README.md}.
+
+\h#develop-test|Testing with PostgreSQL|
+
+The \c{libxle} tests use the in-memory stores unless we give them a
+PostgreSQL maintenance database (normally \c{postgres}) on a server where our
+user may create databases. The setup script grants this permission to the
+user we name with \c{--test-role}:
+
+\
+$ xle/etc/private/postgresql/xle-postgresql-setup --test-role \"$USER\"
+$ bdep test '!config.libxle.test.pgsql=postgres'
+\
+
+Each test creates its own database, named \c{xle_test_} followed by a random
+suffix, and drops it once done. The tests connect with the \c{libpq}
+defaults, so the \c{PGHOST} and \c{PGPORT} environment variables select
+another server.
+
+\h#develop-schema|Changing Database Schema|
+
+The persistent classes are in \c{libxle/libxle/model.hxx}. The development
+build (\c{config.libxle.develop=true}) translates this header with the ODB
+compiler and copies the generated code to \c{libxle/libxle/pregenerated/},
+where the consumption build takes it from. So after changing the header we
+build in a development configuration and commit the regenerated code along
+with the header. The \c{model} test fails if the two are out of sync.
+
+The ODB compiler registers the schema under the name \c{xle}
+(\c{--schema-name} in \c{libxle/libxle/buildfile}), which has to match the
+name that \c{libxle/libxle/pgsql.cxx} creates and migrates. The schema
+catalog of a process holds the schemas of all its libraries, so the name
+keeps the tables of the linked \c{libobe} out of the \c{xle} database.
+
+The schema versions are defined in \c{model.hxx}:
+
+\
+#define LIBXLE_SCHEMA_VERSION_BASE 1
+#define LIBXLE_SCHEMA_VERSION      1, open
+\
+
+The current version is \i{open} while its changes are unreleased, and the
+changes made in the meantime fold into it. The ODB compiler records the closed
+versions in the changelog, \c{libxle/libxle/model.xml}, and generates the
+migration statements from it. The changelog is both its input and its output,
+so we commit it as well. A schema version goes through the following steps:
+
+\dl|
+
+\li|\b{1. Close Version}\n
+
+Before releasing an \c{xle} version with schema changes, we remove \c{open}
+from \c{LIBXLE_SCHEMA_VERSION}, build, and commit the updated changelog.|
+
+\li|\n\b{2. Open Next Version}\n
+
+After the release, we bump the current version (for example, to
+\c{2,\ open}) for the changes that follow.|
+
+\li|\n\b{3. Raise Base Version}\n
+
+To drop the migration from the oldest versions, we raise
+\c{LIBXLE_SCHEMA_VERSION_BASE}. The deployments with an older schema then
+migrate in steps (see \l{#upgrade-schema Migrating Database Schema}), so the
+release notes have to say so.||
+
+See the Database Schema Evolution chapter of the ODB manual for the changes
+that the migration supports.
+"

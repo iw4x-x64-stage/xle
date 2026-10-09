@@ -41,3 +41,8 @@ libxle/libxle/model.xml -spdx linguist-generated
 #
 identities -spdx
 .clangd -spdx
+
+# The documentation style sheets come from the build2 style repository with
+# their own license notice (see xle/LEGAL).
+#
+xle/doc/style/** -spdx
