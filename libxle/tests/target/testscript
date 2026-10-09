@@ -1,0 +1,89 @@
+# Copyright (c) the IW4x authors (see the AUTHORS file).
+# SPDX-License-Identifier: GPL-3.0-only WITH AdditionRef-IW4x-Exception-1.1
+
+: path
+:
+$* <<EOI >>EOO
+target /
+target /users/xuid(42)/people
+target /users/me/people/
+target /a%20b/c%2Fd/e+f
+EOI
+path []
+query
+path [users] [xuid(42)] [people]
+query
+path [users] [me] [people] []
+query
+path [a b] [c/d] [e+f]
+query
+EOO
+
+: query
+:
+$* <<EOI >>EOO
+target /people?view=All&startIndex=0&maxItems=10
+target /p?a&&b=&c=x%3Dy+z&a=2
+target /p?
+EOI
+path [people]
+query [view]=[All] [startIndex]=[0] [maxItems]=[10]
+path [p]
+query [a]=[] [b]=[] [c]=[x=y z] [a]=[2]
+path [p]
+query
+EOO
+
+: target-invalid
+: Test the malformed request targets
+:
+$* <<EOI >>EOO
+target
+target people
+target *
+target /a%2
+target /a%zz
+target /a?b=%G0
+EOI
+invalid: request target must start with '/'
+invalid: request target must start with '/'
+invalid: request target must start with '/'
+invalid: invalid percent-encoding in request target
+invalid: invalid percent-encoding in request target
+invalid: invalid percent-encoding in request target
+EOO
+
+: user
+:
+$* <<EOI >>EOO
+user me
+user xuid(2533274790395904)
+user xuid(18446744073709551615)
+EOI
+1
+2533274790395904
+18446744073709551615
+EOO
+
+: user-invalid
+: Test the malformed user path segments
+:
+$* <<EOI >>EOO
+user
+user you
+user xuid()
+user xuid(-1)
+user xuid( 1)
+user xuid(1x)
+user xuid(18446744073709551616)
+user xuid(1
+EOI
+invalid: invalid user '': expected xuid(<xuid>)
+invalid: invalid user 'you': expected xuid(<xuid>)
+invalid: invalid xuid ''
+invalid: invalid xuid '-1'
+invalid: invalid xuid ' 1'
+invalid: invalid xuid '1x'
+invalid: invalid xuid '18446744073709551616'
+invalid: invalid user 'xuid(1': expected xuid(<xuid>)
+EOO
