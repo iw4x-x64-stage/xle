@@ -4,6 +4,7 @@
 #pragma once
 
 #include <compare> // strong_ordering
+#include <utility> // to_underlying()
 
 #include <libxle/types.hxx>
 
@@ -17,11 +18,6 @@
 // The classes mirror the store interfaces' types rather than being them so
 // that the database representation is spelled out here and can evolve on
 // its own. They are private to the library.
-//
-// Note that PostgreSQL has no unsigned integers so the unsigned values are
-// stored in the signed columns of the same size, with the most significant
-// bit in the sign bit (see the ODB manual, PostgreSQL Type Mapping). This
-// is lossless and the XUIDs are only compared for equality.
 
 // The database schema versions.
 //
@@ -42,6 +38,19 @@
 
 #pragma db model version(LIBXLE_SCHEMA_VERSION_BASE, LIBXLE_SCHEMA_VERSION)
 
+// The value types stored as integers (see the ODB manual, C++ Type Mapping
+// Pragmas).
+//
+// The XUIDs are stored as their values. Note that PostgreSQL has no unsigned
+// integers so they end up in the signed columns of the same size, with the
+// most significant bit in the sign bit (see the ODB manual, PostgreSQL Type
+// Mapping). This is lossless and the XUIDs are only compared for equality.
+//
+#pragma db map type(xle::xuid)               \
+               as(std::uint64_t)             \
+               to(std::to_underlying (?))    \
+               from(xle::xuid {(?)})
+
 namespace xle
 {
   // The owner follows the target (see social_store).
@@ -49,8 +58,8 @@ namespace xle
   #pragma db value
   struct relationship_key
   {
-    uint64_t owner;
-    uint64_t target;
+    xuid owner;
+    xuid target;
 
     friend std::strong_ordering
     operator<=> (const relationship_key&, const relationship_key&) = default;
@@ -91,7 +100,7 @@ namespace xle
   struct relationship_entry
   {
     #pragma db column(forward::id.target)
-    uint64_t target;
+    xuid target;
 
     #pragma db column(forward::favorite)
     bool favorite;

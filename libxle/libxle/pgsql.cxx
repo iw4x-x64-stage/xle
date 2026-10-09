@@ -272,13 +272,12 @@ namespace xle
       chrono::duration_cast<duration> (chrono::nanoseconds (ns)));
   }
 
+  // Return the followed user of the relationship entry.
+  //
   static person
   to_person (const relationship_entry& e)
   {
-    return person {xuid {e.target},
-                   e.favorite,
-                   e.following,
-                   to_timestamp (e.added)};
+    return person {e.target, e.favorite, e.following, to_timestamp (e.added)};
   }
 
   // pgsql_social_store
@@ -297,7 +296,7 @@ namespace xle
     {
       using query = odb::query<relationship_entry>;
 
-      query q (query::forward::id.owner == to_underlying (o));
+      query q (query::forward::id.owner == o);
 
       switch (v)
       {
@@ -343,8 +342,8 @@ namespace xle
 
       unique_ptr<relationship_entry> e (
         db.query_one<relationship_entry> (
-          query::forward::id.owner == to_underlying (o) &&
-          query::forward::id.target == to_underlying (u)));
+          query::forward::id.owner == o &&
+          query::forward::id.target == u));
 
       if (e == nullptr)
         return nullopt;
@@ -361,14 +360,14 @@ namespace xle
     {
       using count_query = odb::query<relationship_count>;
 
-      const relationship_key k {to_underlying (o), to_underlying (u)};
+      const relationship_key k {o, u};
 
       if (db.find<relationship_record> (k) != nullptr)
         return follow_result::existing;
 
       const relationship_count c (
         db.query_value<relationship_count> (
-          count_query::id.owner == to_underlying (o)));
+          count_query::id.owner == o));
 
       if (c.result >= limit)
         return follow_result::full;
@@ -387,8 +386,8 @@ namespace xle
       using query = odb::query<relationship_record>;
 
       return db.erase_query<relationship_record> (
-        query::id.owner == to_underlying (o) &&
-        query::id.target == to_underlying (u)) != 0;
+        query::id.owner == o &&
+        query::id.target == u) != 0;
     });
   }
 
@@ -400,7 +399,7 @@ namespace xle
     {
       unique_ptr<relationship_record> r (
         db.find<relationship_record> (
-          relationship_key {to_underlying (o), to_underlying (u)}));
+          relationship_key {o, u}));
 
       if (r == nullptr)
         return false;

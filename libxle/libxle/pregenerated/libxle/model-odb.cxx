@@ -96,30 +96,38 @@ namespace odb
     // owner
     //
     {
-      ::uint64_t const& v =
+      ::xle::xuid const& v =
         o.owner;
 
       bool is_null (false);
 
+      // From model.hxx:49:12
+      ::uint64_t const& vt =
+        std::to_underlying (v);
+
       pgsql::value_traits<
           ::uint64_t,
           pgsql::id_bigint >::set_image (
-        i.owner_value, is_null, v);
+        i.owner_value, is_null, vt);
       i.owner_null = is_null;
     }
 
     // target
     //
     {
-      ::uint64_t const& v =
+      ::xle::xuid const& v =
         o.target;
 
       bool is_null (false);
 
+      // From model.hxx:49:12
+      ::uint64_t const& vt =
+        std::to_underlying (v);
+
       pgsql::value_traits<
           ::uint64_t,
           pgsql::id_bigint >::set_image (
-        i.target_value, is_null, v);
+        i.target_value, is_null, vt);
       i.target_null = is_null;
     }
 
@@ -138,29 +146,45 @@ namespace odb
     // owner
     //
     {
-      ::uint64_t& v =
+      ::xle::xuid& v =
         o.owner;
+
+      ::uint64_t vt;
 
       pgsql::value_traits<
           ::uint64_t,
           pgsql::id_bigint >::set_value (
-        v,
+        vt,
         i.owner_value,
         i.owner_null);
+
+      // From model.hxx:49:12
+      v = xle::xuid 
+      {
+         (vt) 
+      };
     }
 
     // target
     //
     {
-      ::uint64_t& v =
+      ::xle::xuid& v =
         o.target;
+
+      ::uint64_t vt;
 
       pgsql::value_traits<
           ::uint64_t,
           pgsql::id_bigint >::set_value (
-        v,
+        vt,
         i.target_value,
         i.target_null);
+
+      // From model.hxx:49:12
+      v = xle::xuid 
+      {
+         (vt) 
+      };
     }
   }
 
@@ -931,15 +955,23 @@ namespace odb
     // target
     //
     {
-      ::uint64_t& v =
+      ::xle::xuid& v =
         o.target;
+
+      ::uint64_t vt;
 
       pgsql::value_traits<
           ::uint64_t,
           pgsql::id_bigint >::set_value (
-        v,
+        vt,
         i.target_value,
         i.target_null);
+
+      // From model.hxx:49:12
+      v = xle::xuid 
+      {
+         (vt) 
+      };
     }
 
     // favorite
@@ -999,11 +1031,11 @@ namespace odb
     r += "FROM \"relationship\" AS \"forward\"";
 
     r += " LEFT JOIN \"relationship\" AS \"reverse\" ON";
-    // From model.hxx:86:5
+    // From model.hxx:95:5
     r += query_columns::forward::id.target == query_columns::reverse::id.owner && query_columns::forward::id.owner == query_columns::reverse::id.target;
 
     query_base_type c (
-      // From model.hxx:89:5
+      // From model.hxx:98:5
       (q.empty () ? query_base_type::true_expr : q) + "ORDER BY" + query_columns::forward::added + "," + query_columns::forward::id.target);
 
     c.optimize ();

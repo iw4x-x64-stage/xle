@@ -195,24 +195,144 @@ namespace odb
 
       // owner
       //
+      struct owner_base_type_: pgsql::query_column_base
+      {
+        using query_column_base::query_column_base;
+
+        static void
+        append (pgsql::query_base& q,
+                pgsql::val_bind< ::xle::xuid > v,
+                const char* conv)
+        {
+          // From model.hxx:49:12
+          ::uint64_t const& vt =
+            std::to_underlying (v.val);
+
+          q.append<
+            ::uint64_t,
+            pgsql::id_bigint > (
+              pgsql::val_bind< ::uint64_t > (vt),
+              conv);
+        }
+
+        template <typename T>
+        static auto
+        append (pgsql::query_base& q,
+                pgsql::ref_bind<T> r,
+                const char* conv)
+          -> typename std::enable_if<
+               std::is_reference< decltype (
+                   // From model.hxx:49:12
+                   std::to_underlying (r.ref)) >::value>::type
+        {
+          // From model.hxx:49:12
+          ::uint64_t const& rt =
+            std::to_underlying (r.ref);
+
+          q.append<
+            ::uint64_t,
+            pgsql::id_bigint > (
+              pgsql::ref_bind< ::uint64_t > (rt),
+              conv);
+        }
+
+        // If a compiler error points to the line below, then it most likely
+        // means that the 'to' clause expression of the respective map pragma is
+        // not of a reference type and thus binding by reference is not
+        // supported for this query member.
+        //
+        template <typename T>
+        static auto
+        append (pgsql::query_base& q,
+                pgsql::ref_bind<T> r,
+                const char* conv)
+          -> typename std::enable_if<
+               !std::is_reference< decltype (
+                   // From model.hxx:49:12
+                   std::to_underlying (r.ref)) >::value>::type
+          = delete;
+
+        static void*
+        param_factory () = delete;
+      };
+
       typedef
       pgsql::query_column<
-        pgsql::value_traits<
-          ::uint64_t,
-          pgsql::id_bigint >::query_type,
-        pgsql::id_bigint >
+        ::xle::xuid,
+        pgsql::id_bigint,
+        owner_base_type_ >
       owner_type_;
 
       static const owner_type_ owner;
 
       // target
       //
+      struct target_base_type_: pgsql::query_column_base
+      {
+        using query_column_base::query_column_base;
+
+        static void
+        append (pgsql::query_base& q,
+                pgsql::val_bind< ::xle::xuid > v,
+                const char* conv)
+        {
+          // From model.hxx:49:12
+          ::uint64_t const& vt =
+            std::to_underlying (v.val);
+
+          q.append<
+            ::uint64_t,
+            pgsql::id_bigint > (
+              pgsql::val_bind< ::uint64_t > (vt),
+              conv);
+        }
+
+        template <typename T>
+        static auto
+        append (pgsql::query_base& q,
+                pgsql::ref_bind<T> r,
+                const char* conv)
+          -> typename std::enable_if<
+               std::is_reference< decltype (
+                   // From model.hxx:49:12
+                   std::to_underlying (r.ref)) >::value>::type
+        {
+          // From model.hxx:49:12
+          ::uint64_t const& rt =
+            std::to_underlying (r.ref);
+
+          q.append<
+            ::uint64_t,
+            pgsql::id_bigint > (
+              pgsql::ref_bind< ::uint64_t > (rt),
+              conv);
+        }
+
+        // If a compiler error points to the line below, then it most likely
+        // means that the 'to' clause expression of the respective map pragma is
+        // not of a reference type and thus binding by reference is not
+        // supported for this query member.
+        //
+        template <typename T>
+        static auto
+        append (pgsql::query_base& q,
+                pgsql::ref_bind<T> r,
+                const char* conv)
+          -> typename std::enable_if<
+               !std::is_reference< decltype (
+                   // From model.hxx:49:12
+                   std::to_underlying (r.ref)) >::value>::type
+          = delete;
+
+        static void*
+        param_factory () = delete;
+      };
+
       typedef
       pgsql::query_column<
-        pgsql::value_traits<
-          ::uint64_t,
-          pgsql::id_bigint >::query_type,
-        pgsql::id_bigint >
+        ::xle::xuid,
+        pgsql::id_bigint,
+        target_base_type_ >
       target_type_;
 
       static const target_type_ target;
