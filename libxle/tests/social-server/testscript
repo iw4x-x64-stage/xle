@@ -1,0 +1,40 @@
+# Copyright (c) the IW4x authors (see the AUTHORS file).
+# SPDX-License-Identifier: GPL-3.0-only WITH AdditionRef-IW4x-Exception-1.1
+
+test.options += $src_base/cert.pem $src_base/key.pem
+
+: people
+: Test serving the people list of the authenticated caller
+:
+$* <<EOI >>EOO 2>>~%EOE%
+GET /users/xuid(1)/people?maxItems=100 user:1
+EOI
+200 application/json {"totalCount":1,"people":[{"xuid":"2","isFavorite":false,"isFollowingCaller":false,"socialNetworks":[]}]}
+EOO
+EOE
+
+: refused
+: Test the refused requests
+:
+$* <<EOI >>EOO 2>>~%EOE%
+GET /users/xuid(1)/people forged
+GET /users/xuid(1)/people user:2
+PUT /users/xuid(1)/people user:1
+GET /other user:1
+GET /users/xuid(666)/people user:666
+GET /users/xuid(1)/people *9000
+EOI
+401
+403
+405 GET
+404
+503
+431
+EOO
+%.+: warning: invalid platform token: not a test token%
+%.+: warning: user 2: people of user 1 not accessible%
+%.+: warning: user 1: method PUT not allowed%
+%.+: warning: user 1: unknown target '/other'%
+%.+: error: database unavailable%
+%.+: warning: request too large%
+EOE
