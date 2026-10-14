@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-only WITH AdditionRef-IW4x-Exception-1.1
 
 #include <print>
+#include <format>
 #include <string>
 #include <cstdio>    // fflush(), stdout
 #include <cstdint>
@@ -20,6 +21,7 @@
 
 #include <libxle/version.hxx>
 #include <libxle/pgsql.hxx>
+#include <libxle/diagnostics.hxx>
 #include <libxle/social-store.hxx>
 #include <libxle/social-server.hxx>
 #include <libxle/service-social.hxx>
@@ -55,10 +57,6 @@ namespace xle
   public:
     using io_context::shutdown;
   };
-
-  // The diagnostics verbosity (see --verbose).
-  //
-  static uint16_t verb (1);
 
   static int
   main (int argc, char* argv[])
@@ -99,17 +97,17 @@ namespace xle
     //
     if (o.verbose () > 3)
     {
-      println (cerr,
-               "error: invalid --verbose value {}\n"
-               "  info: specify a level between 0 and 3",
-               o.verbose ());
+      LOG_ERROR (logger (),
+                 "error: invalid --verbose value {}\n"
+                 "  info: specify a level between 0 and 3",
+                 o.verbose ());
       throw failed ();
     }
 
-    verb = o.quiet () ? 0 :
-           o.V ()     ? 3 :
-           o.v ()     ? 2 :
-           o.verbose ();
+    set_verbosity (o.quiet () ? 0 :
+                   o.V ()     ? 3 :
+                   o.v ()     ? 2 :
+                   o.verbose ());
 
     // Verify the server configuration, unless migrating, before going any
     // further.
@@ -117,9 +115,9 @@ namespace xle
     if (!o.migrate () &&
         (!o.tls_certificate_specified () || !o.tls_key_specified ()))
     {
-      println (cerr,
-               "error: TLS certificate and key are required\n"
-               "  info: specify them with --tls-certificate and --tls-key");
+      LOG_ERROR (logger (),
+                 "error: TLS certificate and key are required\n"
+                 "  info: specify them with --tls-certificate and --tls-key");
       throw failed ();
     }
 
@@ -131,7 +129,7 @@ namespace xle
 
       if (ec)
       {
-        println (cerr, "error: invalid address '{}'", o.address ());
+        LOG_ERROR (logger (), "error: invalid address '{}'", o.address ());
         throw failed ();
       }
 
@@ -152,16 +150,16 @@ namespace xle
       tls.use_certificate_chain_file (o.tls_certificate (), ec);
       if (ec)
       {
-        println (cerr, "error: unable to load TLS certificate {}: {}",
-                 o.tls_certificate (), ec.message ());
+        LOG_ERROR (logger (), "error: unable to load TLS certificate {}: {}",
+                   o.tls_certificate (), ec.message ());
         throw failed ();
       }
 
       tls.use_private_key_file (o.tls_key (), asio::ssl::context::pem, ec);
       if (ec)
       {
-        println (cerr, "error: unable to load TLS key {}: {}",
-                 o.tls_key (), ec.message ());
+        LOG_ERROR (logger (), "error: unable to load TLS key {}: {}",
+                   o.tls_key (), ec.message ());
         throw failed ();
       }
     }
@@ -173,15 +171,15 @@ namespace xle
     //
     if (!o.db_name_specified ())
     {
-      println (cerr,
-               "error: no database specified\n"
-               "  info: specify it with --db-name");
+      LOG_ERROR (logger (),
+                 "error: no database specified\n"
+                 "  info: specify it with --db-name");
       throw failed ();
     }
 
     if (o.db_max_connections () == 0)
     {
-      println (cerr, "error: invalid --db-max-connections value 0");
+      LOG_ERROR (logger (), "error: invalid --db-max-connections value 0");
       throw failed ();
     }
 
@@ -212,22 +210,21 @@ namespace xle
       }
       catch (const database_error& e)
       {
-        println (cerr, "error: unable to migrate database {}: {}",
-                 n, e.what ());
+        LOG_ERROR (logger (), "error: unable to migrate database {}: {}",
+                   n, e.what ());
         throw failed ();
       }
 
-      if (verb >= 2)
-      {
-        if (v == 0)
-          println (cerr, "created database {} schema version {}", n, cv);
-        else if (v != cv)
-          println (cerr,
-                   "migrated database {} schema from version {} to {}",
-                   n, v, cv);
-        else
-          println (cerr, "database {} schema version {} is current", n, cv);
-      }
+      if (v == 0)
+        LOG_INFO (logger (), "created database {} schema version {}", n, cv);
+      else if (v != cv)
+        LOG_INFO (logger (),
+                  "migrated database {} schema from version {} to {}",
+                  n, v, cv);
+      else
+        LOG_INFO (logger (),
+                  "database {} schema version {} is current",
+                  n, cv);
 
       return 0;
     }
@@ -240,21 +237,24 @@ namespace xle
       }
       catch (const database_error& e)
       {
-        println (cerr, "error: unable to access database {}: {}",
-                 n, e.what ());
+        LOG_ERROR (logger (), "error: unable to access database {}: {}",
+                   n, e.what ());
         throw failed ();
       }
 
       if (v != cv)
       {
         if (v == 0)
-          println (cerr, "error: database {} has no schema", n);
+          LOG_ERROR (logger (),
+                     "error: database {} has no schema\n"
+                     "  info: run 'xle --migrate' to create or migrate it",
+                     n);
         else
-          println (cerr,
-                   "error: database {} schema version {} instead of {}",
-                   n, v, cv);
+          LOG_ERROR (logger (),
+                     "error: database {} schema version {} instead of {}\n"
+                     "  info: run 'xle --migrate' to create or migrate it",
+                     n, v, cv);
 
-        println (cerr, "  info: run 'xle --migrate' to create or migrate it");
         throw failed ();
       }
     }
@@ -297,13 +297,13 @@ namespace xle
     }
     catch (const boost::system::system_error& e)
     {
-      println (cerr, "error: unable to listen on {}: {}",
-               ep, e.code ().message ());
+      LOG_ERROR (logger (),
+                 "error: unable to listen on {}: {}",
+                 format ("{}", ep), e.code ().message ());
       throw failed ();
     }
 
-    if (verb >= 2)
-      println (cerr, "listening on {}", server->endpoint ());
+    LOG_INFO (logger (), "listening on {}", format ("{}", server->endpoint ()));
 
     // Flush so that whoever reads the endpoint gets it right away.
     //
@@ -328,7 +328,7 @@ namespace xle
         }
         catch (const std::exception& x)
         {
-          println (cerr, "error: server failed: {}", x.what ());
+          LOG_ERROR (logger (), "error: server failed: {}", x.what ());
         }
 
         r = 1;
@@ -341,8 +341,7 @@ namespace xle
         if (ec)
           return;
 
-        if (verb >= 2)
-          println (cerr, "shutting down");
+        LOG_INFO (logger (), "shutting down");
 
         ctx.stop ();
       });
@@ -371,10 +370,10 @@ namespace xle
     ostringstream os;
     os << e;
 
-    println (cerr,
-             "error: {}\n"
-             "  info: run 'xle --help' for more information",
-             os.str ());
+    LOG_ERROR (logger (),
+               "error: {}\n"
+               "  info: run 'xle --help' for more information",
+               os.str ());
     return 1;
   }
 }
