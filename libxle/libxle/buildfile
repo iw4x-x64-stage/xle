@@ -15,6 +15,11 @@ import intf_libs = libobe%lib{obe}
 import intf_libs += libboost-asio%lib{boost_asio}
 import intf_libs += libssl%lib{ssl}
 
+# The diagnostics are issued with quill's logging macros, so its headers are
+# part of our interface (see diagnostics.hxx).
+#
+import intf_libs += libquill%lib{quill}
+
 # The server speaks HTTP with Beast and the services reply with JSON.
 #
 import impl_libs  = libboost-beast%lib{boost_beast}
