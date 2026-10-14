@@ -26,7 +26,7 @@ namespace xle
      Currently \cb{xle} serves the social relationships (the people lists)
      over HTTPS. It accepts the Xbox Live style platform tokens that IW4x
      issues for \cb{https://social.xboxlive.com}, the same tokens that
-     \cb{obe} accepts for its own address."
+     \cb{bde} accepts for its own address."
   }
 
   class options

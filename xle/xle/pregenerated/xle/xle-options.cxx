@@ -1255,7 +1255,7 @@ namespace xle
        << ::std::endl
        << "Currently \033[1mxle\033[0m serves the social relationships (the people lists) over HTTPS. It" << ::std::endl
        << "accepts the Xbox Live style platform tokens that IW4x issues for" << ::std::endl
-       << "\033[1mhttps://social.xboxlive.com\033[0m, the same tokens that \033[1mobe\033[0m accepts for its own" << ::std::endl
+       << "\033[1mhttps://social.xboxlive.com\033[0m, the same tokens that \033[1mbde\033[0m accepts for its own" << ::std::endl
        << "address." << ::std::endl;
 
     p = ::xle::options::print_usage (os, ::xle::cli::usage_para::text);

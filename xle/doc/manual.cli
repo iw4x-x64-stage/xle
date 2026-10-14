@@ -26,7 +26,7 @@ PostgreSQL database.
 The current version of \c{xle} serves the social relationships, the people
 lists that the game polls for its friends list, over HTTPS. The game
 authenticates each request with a platform token, the same kind of token
-that it presents to \c{obe}, which \c{xle} verifies on its own. With
+that it presents to \c{bde}, which \c{xle} verifies on its own. With
 \c{--migrate} \c{xle} instead creates the database schema or migrates it to
 the current version and exits.
 
@@ -183,7 +183,7 @@ $ sudo chown root:xle /etc/xle/tls/key.pem
 $ sudo chmod 640 /etc/xle/tls/key.pem
 \
 
-\N|If \c{obe} runs on the same host, then each server has a certificate for
+\N|If \c{bde} runs on the same host, then each server has a certificate for
 its own name, since the clients reach them by different names.|
 
 |
@@ -205,7 +205,7 @@ comments. Let's create \c{/etc/xle/xle.options} with the following contents:
 --verbose         2
 \
 
-\c{xle} listens on port 443 by default. If \c{obe} already listens there on
+\c{xle} listens on port 443 by default. If \c{bde} already listens there on
 the same address, then we give \c{xle} the port that IW4x client connects to
 for the social services, for example:
 
@@ -323,7 +323,7 @@ HTTP challenge: Let's Encrypt fetches a token from port 80 of the host, and
 certificates are valid for 90 days and \c{certbot} renews them about a month
 before they expire.
 
-If \c{obe} runs on the same host and is set up as described in its manual,
+If \c{bde} runs on the same host and is set up as described in its manual,
 then \c{certbot} is already installed and port 80 is open, and we skip steps
 2 and 3.
 
@@ -696,7 +696,7 @@ The ODB compiler registers the schema under the name \c{xle}
 (\c{--schema-name} in \c{libxle/libxle/buildfile}), which has to match the
 name that \c{libxle/libxle/pgsql.cxx} creates and migrates. The schema
 catalog of a process holds the schemas of all its libraries, so the name
-keeps the tables of the linked \c{libobe} out of the \c{xle} database.
+keeps the tables of the linked \c{libbde} out of the \c{xle} database.
 
 The schema versions are defined in \c{model.hxx}:
 

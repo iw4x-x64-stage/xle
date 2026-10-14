@@ -32,7 +32,7 @@ namespace xle
   // table (see --schema-name in buildfile).
   //
   // Note that the catalog is process-wide and also has the schemas of the
-  // libraries we link (libobe has the default, empty-named one). So every
+  // libraries we link (libbde has the default, empty-named one). So every
   // catalog and version operation must name our schema or it would also
   // create the other schemas' tables and share their version.
   //
@@ -163,7 +163,7 @@ namespace xle
   pgsql_database (const pgsql_settings& s)
     : transactions_ (make_unique<transaction_pool> (s))
   {
-    LIBOBE_PRE (s.max_connections != 0);
+    LIBBDE_PRE (s.max_connections != 0);
   }
 
   pgsql_database::

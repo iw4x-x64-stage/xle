@@ -20,7 +20,7 @@ namespace xle
   // audience and return the caller. Throw invalid_argument describing the
   // problem if it is not valid.
   //
-  // In production this is obe::verify_xbl_token() (see the xle executable).
+  // In production this is bde::verify_xbl_token() (see the xle executable).
   //
   using token_verifier =
     move_only_function<caller (string_view token, string_view audience) const>;

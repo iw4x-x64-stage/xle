@@ -16,7 +16,7 @@ namespace xle
       case http_method::delete_: return "DELETE";
     }
 
-    LIBOBE_UNREACHABLE ();
+    LIBBDE_UNREACHABLE ();
   }
 
   // service (vtable)

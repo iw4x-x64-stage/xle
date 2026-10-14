@@ -28,7 +28,7 @@ namespace xle
   to_string (http_method) noexcept;
 
   // The authenticated caller (see the platform tokens in
-  // libobe/authenticator-xbl.hxx).
+  // libbde/authenticator-xbl.hxx).
   //
   struct caller
   {

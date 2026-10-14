@@ -14,7 +14,7 @@
 #include <boost/beast/http.hpp>
 #include <boost/beast/ssl.hpp>
 
-#include <libobe/endpoint.hxx>
+#include <libbde/endpoint.hxx>
 
 #include <libxle/diagnostics.hxx>
 

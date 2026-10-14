@@ -11,8 +11,8 @@
 #include <iterator>  // make_move_iterator()
 #include <algorithm> // *
 
-#include <libobe/utility.hxx>  // invalid_input, formattable_argument
-#include <libobe/contract.hxx> // LIBOBE_PRE(), LIBOBE_ASSERT(), etc.
+#include <libbde/utility.hxx>  // invalid_input, formattable_argument
+#include <libbde/contract.hxx> // LIBBDE_PRE(), LIBBDE_ASSERT(), etc.
 
 #include <libxle/types.hxx>
 
@@ -34,8 +34,8 @@ namespace xle
   //
   // throw invalid_input ("invalid {}: object expected", what);
   //
-  using obe::invalid_input;
-  using obe::formattable_argument;
+  using bde::invalid_input;
+  using bde::formattable_argument;
 
   // The store failure (the database is unavailable, etc), which the
   // services report as a transient server error.

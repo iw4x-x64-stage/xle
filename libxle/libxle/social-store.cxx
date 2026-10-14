@@ -17,7 +17,7 @@ namespace xle
       case relationship_view::legacy_friends: return "LegacyXboxLiveFriends";
     }
 
-    LIBOBE_UNREACHABLE ();
+    LIBBDE_UNREACHABLE ();
   }
 
   // Return true if the ASCII strings are equal ignoring case.
@@ -67,7 +67,7 @@ namespace xle
       case follow_result::full:     return "full";
     }
 
-    LIBOBE_UNREACHABLE ();
+    LIBBDE_UNREACHABLE ();
   }
 
   // social_store

@@ -8,7 +8,7 @@
 : refuses a newer one
 :
 : The ODB schema catalog is process-wide and also has the schemas of the
-: libraries we link (libobe), which must be neither created nor versioned
+: libraries we link (libbde), which must be neither created nor versioned
 : with ours.
 :
 if ($pgsql != [null])

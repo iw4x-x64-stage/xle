@@ -5,9 +5,9 @@ intf_libs = # Interface dependencies.
 impl_libs = # Implementation dependencies.
 
 # The utility declarations and the contract checking facility come from
-# libobe.
+# libbde.
 #
-import intf_libs = libobe%lib{obe}
+import intf_libs = libbde%lib{bde}
 
 # The stores and the services are coroutines (Asio awaitables) and the
 # server speaks TLS (its header has the Asio TLS context).

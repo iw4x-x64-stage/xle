@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-only WITH AdditionRef-IW4x-Exception-1.1
 
 import libs  = libxle%lib{xle}
-import libs += libobe%lib{obe}
+import libs += libbde%lib{bde}
 import libs += libboost-asio%lib{boost_asio}
 import libs += libssl%lib{ssl}
 

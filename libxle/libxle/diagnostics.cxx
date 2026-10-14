@@ -52,7 +52,7 @@ namespace xle
   void
   set_verbosity (uint16_t v)
   {
-    LIBOBE_PRE (v <= 6);
+    LIBBDE_PRE (v <= 6);
 
     static const quill::LogLevel levels[]
     {

@@ -16,8 +16,8 @@
 #include <boost/asio/signal_set.hpp>
 #include <boost/asio/ssl/context.hpp>
 
-#include <libobe/endpoint.hxx>
-#include <libobe/authenticator-xbl.hxx>
+#include <libbde/endpoint.hxx>
+#include <libbde/authenticator-xbl.hxx>
 
 #include <libxle/version.hxx>
 #include <libxle/pgsql.hxx>
@@ -260,18 +260,18 @@ namespace xle
     }
 
     // Verify the Xbox Live style tokens that IW4x issues for the services
-    // (see obe::verify_xbl_token() for their form). The verification lives
-    // in libobe because obe's Demonware authentication server uses it first
-    // and xle depends on libobe, which also tests it. Note that the gamertag
+    // (see bde::verify_xbl_token() for their form). The verification lives
+    // in libbde because bde's Demonware authentication server uses it first
+    // and xle depends on libbde, which also tests it. Note that the gamertag
     // is the user name of the identity.
     //
     auto verify = [] (string_view t, string_view a)
     {
-      obe::xbl_settings xs;
+      bde::xbl_settings xs;
       xs.audience = a;
 
-      obe::auth_identity id (
-        obe::verify_xbl_token (t, system_clock::now (), xs));
+      bde::auth_identity id (
+        bde::verify_xbl_token (t, system_clock::now (), xs));
 
       return caller {xuid {to_underlying (id.user)}, move (id.user_name)};
     };
