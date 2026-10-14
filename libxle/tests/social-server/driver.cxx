@@ -22,6 +22,7 @@
 #include <boost/beast/http.hpp>
 #include <boost/beast/ssl.hpp>
 
+#include <libxle/diagnostics.hxx>
 #include <libxle/social-store.hxx>
 #include <libxle/social-server.hxx>
 #include <libxle/service-social.hxx>
@@ -100,11 +101,13 @@ main (int argc, char* argv[])
     return caller {xuid {stoull (string (t.substr (5)))}, "user"};
   };
 
-  // Print the callers the server lets the observer see.
+  // Print the callers the server lets the observer see. We print them
+  // through the diagnostics logger so that they are ordered with the
+  // server's diagnostics.
   //
   auto observe = [] (const caller& c) -> awaitable<void>
   {
-    println (cerr, "seen user {}", to_underlying (c.user));
+    LOG_NOTICE (logger (), "seen user {}", to_underlying (c.user));
     co_return;
   };
 

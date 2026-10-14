@@ -51,7 +51,7 @@ namespace xle
   // 501.
   //
   // The diagnostics (invalid tokens, refused requests, store failures) are
-  // printed to stderr.
+  // issued through the diagnostics logger (see diagnostics.hxx).
   //
   // The server, the TLS context, and the services should outlive the
   // connections, which means the io_context should be stopped (and its

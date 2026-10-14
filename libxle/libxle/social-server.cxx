@@ -3,8 +3,6 @@
 
 #include <libxle/social-server.hxx>
 
-#include <print>
-#include <cstdio> // stderr
 #include <algorithm> // find_if()
 
 #include <boost/asio/as_tuple.hpp>
@@ -17,6 +15,8 @@
 #include <boost/beast/ssl.hpp>
 
 #include <libobe/endpoint.hxx>
+
+#include <libxle/diagnostics.hxx>
 
 using namespace std;
 
@@ -102,7 +102,7 @@ namespace xle
 
     if (i == services_.end ())
     {
-      println (stderr, "{}: warning: unknown target", n);
+      LOG_WARNING (logger (), "{}: warning: unknown target", n);
       co_return service_reply {404, string (), string ()};
     }
 
@@ -117,7 +117,9 @@ namespace xle
     }
     catch (const invalid_argument& e)
     {
-      println (stderr, "{}: warning: invalid platform token: {}", n, e.what ());
+      LOG_WARNING (logger (),
+                   "{}: warning: invalid platform token: {}",
+                   n, e.what ());
       co_return service_reply {401, string (), string ()};
     }
 
@@ -134,16 +136,16 @@ namespace xle
     }
     catch (const store_error& e)
     {
-      println (stderr, "{}: error: {}", n, e.what ());
+      LOG_ERROR (logger (), "{}: error: {}", n, e.what ());
     }
 
     if (!r)
       co_return service_reply {503, string (), string ()};
 
     if (r->status != 200)
-      println (stderr,
-               "{}: warning: user {}: {}",
-               n, to_underlying (c->user), r->error);
+      LOG_WARNING (logger (),
+                   "{}: warning: user {}: {}",
+                   n, to_underlying (c->user), r->error);
 
     co_return move (*r);
   }
@@ -191,7 +193,7 @@ namespace xle
       //
       if (ec == http::error::header_limit || ec == http::error::body_limit)
       {
-        println (stderr, "{}: warning: request too large", n);
+        LOG_WARNING (logger (), "{}: warning: request too large", n);
 
         http::response<http::string_body> rs (
           ec == http::error::header_limit
@@ -226,7 +228,7 @@ namespace xle
         }
         catch (const invalid_argument& e)
         {
-          println (stderr, "{}: warning: {}", n, e.what ());
+          LOG_WARNING (logger (), "{}: warning: {}", n, e.what ());
           r.status = 400;
         }
 
@@ -238,9 +240,9 @@ namespace xle
                                rq.body ());
       }
       else
-        println (stderr,
-                 "{}: warning: method {} not implemented",
-                 n, string (rq.method_string ()));
+        LOG_WARNING (logger (),
+                     "{}: warning: method {} not implemented",
+                     n, string (rq.method_string ()));
 
       // Prepare the response.
       //
@@ -300,13 +302,13 @@ namespace xle
       // Accept can fail for transient reasons (for example, out of file
       // descriptors), so we diagnose and carry on. But not right away: such
       // a failure is normally immediate and would repeat until the condition
-      // clears, so retrying straight away would spin and flood stderr.
+      // clears, so retrying straight away would spin and flood the diagnostics.
       //
       if (ec)
       {
-        println (stderr,
-                 "error: unable to accept connection: {}",
-                 ec.message ());
+        LOG_ERROR (logger (),
+                   "error: unable to accept connection: {}",
+                   ec.message ());
 
         asio::steady_timer t (acceptor_.get_executor (), accept_retry_delay);
         co_await t.async_wait (asio::as_tuple (use_awaitable));
@@ -336,7 +338,7 @@ namespace xle
         }
         catch (const std::exception& x)
         {
-          println (stderr, "error: connection: {}", x.what ());
+          LOG_ERROR (logger (), "error: connection: {}", x.what ());
         }
       };
 
